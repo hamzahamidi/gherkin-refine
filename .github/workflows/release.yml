@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - name: Check tag and package version
+        run: node -e 'if (process.env.GITHUB_REF_NAME.slice(1) !== require("./package.json").version) process.exit(1)'
+      - run: npm ci
+      - run: npm run validate
+      - run: npm pack --dry-run
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Use npm with trusted publishing support
+        run: |
+          npm install --global npm@11.20.0
+          node --version
+          npm --version
+      - run: npm ci
+      - id: package
+        name: Pack release artifact
+        run: |
+          npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/pack.json"
+          node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const pack = Array.isArray(data) ? data[0] : data.gherkinlint ?? data; if (!pack?.filename || !pack?.integrity || !pack?.version) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${pack.filename}\nversion=${pack.version}\nintegrity=${pack.integrity}\n`);' "$RUNNER_TEMP/pack.json"
+      - name: Publish package
+        env:
+          PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+          PACKAGE_INTEGRITY: ${{ steps.package.outputs.integrity }}
+        run: |
+          registry_integrity="$(npm view "gherkinlint@$PACKAGE_VERSION" dist.integrity 2>/dev/null || true)"
+          if [ -n "$registry_integrity" ]; then
+            test "$registry_integrity" = "$PACKAGE_INTEGRITY"
+          else
+            npm publish "$RUNNER_TEMP/$PACKAGE_FILENAME"
+          fi
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file CHANGELOG.md

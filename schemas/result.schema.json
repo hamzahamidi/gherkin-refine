@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hamzahamidi/gherkinlint/blob/main/schemas/result.schema.json",
+  "title": "gherkinlint result",
+  "type": "object",
+  "required": ["schemaVersion", "tool", "summary", "results"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "gherkinlint" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["files", "errors", "warnings", "fixable", "truncated"],
+      "properties": {
+        "files": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "fixable": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["filePath", "diagnostics"],
+        "properties": {
+          "filePath": { "type": "string" },
+          "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+          "fixes": { "type": "array", "items": { "$ref": "#/$defs/fix" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "position": {
+      "type": "object",
+      "required": ["line", "column"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "fix": {
+      "type": "object",
+      "required": ["range", "text"],
+      "properties": {
+        "range": { "type": "array", "prefixItems": [{ "type": "integer", "minimum": 0 }, { "type": "integer", "minimum": 0 }], "minItems": 2, "maxItems": 2 },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["filePath", "ruleId", "severity", "message", "start"],
+      "properties": {
+        "filePath": { "type": "string" },
+        "ruleId": { "type": "string" },
+        "severity": { "enum": ["warn", "error"] },
+        "message": { "type": "string" },
+        "messageId": { "type": "string" },
+        "start": { "$ref": "#/$defs/position" },
+        "end": { "$ref": "#/$defs/position" },
+        "range": { "$ref": "#/$defs/fix/properties/range" },
+        "fix": { "$ref": "#/$defs/fix" },
+        "suggestions": { "type": "array", "items": { "type": "object", "required": ["description", "fix"], "properties": { "description": { "type": "string" }, "fix": { "$ref": "#/$defs/fix" } }, "additionalProperties": false } },
+        "data": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
