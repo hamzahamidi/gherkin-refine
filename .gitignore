@@ -3,3 +3,4 @@ dist/
 coverage/
 .gherkin-refinecache/
 *.tgz
+compatibility-report.json

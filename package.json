@@ -35,7 +35,10 @@
     "bench": "node --expose-gc scripts/benchmark.mjs",
     "check:pack": "npm pack --dry-run",
     "validate": "npm run typecheck && npm run lint && npm run build && npm test && npm run smoke && npm run check:pack",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "compatibility": "npm run build && node scripts/compatibility.mjs",
+    "compatibility:full": "npm run build && node scripts/compatibility.mjs --full",
+    "compatibility:published": "node scripts/compatibility.mjs --full --published"
   },
   "keywords": [
     "gherkin",
