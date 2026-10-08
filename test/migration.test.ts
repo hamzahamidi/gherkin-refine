@@ -18,6 +18,27 @@ afterEach(async () => {
 });
 
 describe("migrateLegacyConfig", () => {
+  it.each([true, "error", 2])("maps error severity %j", severity => {
+    expect(migrateLegacyConfig({ "no-duplicate-tags": severity }).config.rules?.["no-duplicate-tags"]).toBe("error");
+  });
+
+  it.each([false, "off", 0, "warn", "warning", 1])("maps disabled or warning severity %j", severity => {
+    expect(migrateLegacyConfig({ "no-duplicate-tags": severity }).config.rules?.["no-duplicate-tags"])
+      .toBe(severity === "warn" || severity === "warning" || severity === 1 ? "warn" : "off");
+  });
+
+  it("maps lowercase limits and equal name limits without partial warnings", () => {
+    const result = migrateLegacyConfig({
+      "scenario-size": ["on", { scenario: 6 }],
+      "name-length": ["on", { feature: 30, scenario: 30 }]
+    });
+    expect(result.config.rules).toEqual({ "scenario-size": ["error", { maxSteps: 6 }], "name-length": ["error", { max: 30 }] });
+    expect(result.unsupported).toEqual([]);
+    const unequal = migrateLegacyConfig({ "name-length": ["on", { Feature: 20, Scenario: 30 }] });
+    expect(unequal.config.rules?.["name-length"]).toEqual(["error", { max: 70 }]);
+    expect(unequal.unsupported).toEqual(["name-length: different Feature and Scenario limits cannot be represented by one name-length option."]);
+  });
+
   it("maps direct rules and reports partial or unsupported legacy behavior", () => {
     const result = migrateLegacyConfig({
       "no-duplicate-tags": ["warn", { includeFeature: true }],
