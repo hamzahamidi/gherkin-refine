@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Git tag to release
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -10,14 +16,20 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
           cache: npm
       - name: Check tag and package version
-        run: node -e 'if (process.env.GITHUB_REF_NAME.slice(1) !== require("./package.json").version) process.exit(1)'
+        run: |
+          case "$RELEASE_TAG" in v*) ;; *) exit 1 ;; esac
+          node -e 'if (process.env.RELEASE_TAG.slice(1) !== require("./package.json").version) process.exit(1)'
       - run: npm ci
       - run: npm run validate
       - run: npm pack --dry-run
@@ -26,11 +38,15 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     environment: npm
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     permissions:
       contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
@@ -46,17 +62,49 @@ jobs:
         name: Pack release artifact
         run: |
           npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/pack.json"
-          node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const pack = Array.isArray(data) ? data[0] : data?.filename ? data : Object.values(data)[0]; if (!pack?.filename || !pack?.integrity || !pack?.version) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${pack.filename}\nversion=${pack.version}\nintegrity=${pack.integrity}\n`);' "$RUNNER_TEMP/pack.json"
+          node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const pack = Array.isArray(data) ? data[0] : data?.filename ? data : Object.values(data)[0]; if (!pack?.filename || !pack?.version) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${pack.filename}\nversion=${pack.version}\n`);' "$RUNNER_TEMP/pack.json"
       - name: Publish package
         env:
           PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
           PACKAGE_VERSION: ${{ steps.package.outputs.version }}
-          PACKAGE_INTEGRITY: ${{ steps.package.outputs.integrity }}
         run: |
           package_name="$(node -p 'require("./package.json").name')"
           registry_integrity="$(npm view "$package_name@$PACKAGE_VERSION" dist.integrity 2>/dev/null || true)"
           if [ -n "$registry_integrity" ]; then
-            test "$registry_integrity" = "$PACKAGE_INTEGRITY"
+            registry_tarball="$(npm view "$package_name@$PACKAGE_VERSION" dist.tarball)"
+            python3 - "$RUNNER_TEMP/$PACKAGE_FILENAME" "$registry_tarball" <<'PY'
+          import hashlib
+          import io
+          import sys
+          import tarfile
+          import urllib.request
+
+          def manifest(source):
+              if source.startswith(("http://", "https://")):
+                  with urllib.request.urlopen(source) as response:
+                      archive_bytes = response.read()
+              else:
+                  with open(source, "rb") as archive_file:
+                      archive_bytes = archive_file.read()
+              entries = {}
+              with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as archive:
+                  for member in archive.getmembers():
+                      if member.isfile():
+                          content = archive.extractfile(member)
+                          if content is None:
+                              raise SystemExit(f"Cannot read {member.name}")
+                          entries[member.name] = ("file", member.mode, hashlib.sha256(content.read()).hexdigest())
+                      elif member.issym() or member.islnk():
+                          entries[member.name] = ("link", member.mode, member.linkname)
+              return entries
+
+          candidate = manifest(sys.argv[1])
+          published = manifest(sys.argv[2])
+          if candidate != published:
+              print("Published package files differ from the release artifact.", file=sys.stderr)
+              sys.exit(1)
+          print("Published package files match the release artifact.")
+          PY
           else
             npm publish "$RUNNER_TEMP/$PACKAGE_FILENAME" --access public
           fi
@@ -64,5 +112,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file CHANGELOG.md
