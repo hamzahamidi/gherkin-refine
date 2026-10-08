@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3 (2026-10-08)
+
+Updates package links to the renamed GitHub repository and documents a GitHub Actions quickstart.
+
 ## 1.0.2 (2026-10-08)
 
 Uses package metadata as the source of truth for CLI version output.
