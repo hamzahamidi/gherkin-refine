@@ -120,7 +120,7 @@ function toSarif(result: LintResult, cwd: string, metadata: Readonly<Record<stri
     runs: [{
       tool: {
         driver: {
-          name: "gherkinlint",
+          name: "gherkin-refine",
           version: VERSION,
           rules
         }

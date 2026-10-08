@@ -8,7 +8,7 @@ interface Directive {
   used: boolean;
 }
 
-const DIRECTIVE = /^\s*#\s*gherkinlint-(disable-next-line|disable-line|disable-file|disable|enable)(?:\s+(.*))?\s*$/;
+const DIRECTIVE = /^\s*#\s*(?:gherkin-refine|gherkinlint)-(disable-next-line|disable-line|disable-file|disable|enable)(?:\s+(.*))?\s*$/;
 
 export function applySuppressions(
   document: LintDocument,

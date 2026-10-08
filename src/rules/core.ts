@@ -100,7 +100,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       description: "Report suppression comments that suppress no diagnostics when reporting is enabled.",
       category: "correctness",
       recommended: false,
-      examples: ["# gherkinlint-disable-next-line name-length -- legacy title"],
+      examples: ["# gherkin-refine-disable-next-line name-length -- legacy title"],
       documentation: "docs/configuration.md#inline-suppression"
     },
     run() {}

@@ -46,18 +46,19 @@ jobs:
         name: Pack release artifact
         run: |
           npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/pack.json"
-          node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const pack = Array.isArray(data) ? data[0] : data.gherkinlint ?? data; if (!pack?.filename || !pack?.integrity || !pack?.version) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${pack.filename}\nversion=${pack.version}\nintegrity=${pack.integrity}\n`);' "$RUNNER_TEMP/pack.json"
+          node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const pack = Array.isArray(data) ? data[0] : data?.filename ? data : Object.values(data)[0]; if (!pack?.filename || !pack?.integrity || !pack?.version) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${pack.filename}\nversion=${pack.version}\nintegrity=${pack.integrity}\n`);' "$RUNNER_TEMP/pack.json"
       - name: Publish package
         env:
           PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
           PACKAGE_VERSION: ${{ steps.package.outputs.version }}
           PACKAGE_INTEGRITY: ${{ steps.package.outputs.integrity }}
         run: |
-          registry_integrity="$(npm view "gherkinlint@$PACKAGE_VERSION" dist.integrity 2>/dev/null || true)"
+          package_name="$(node -p 'require("./package.json").name')"
+          registry_integrity="$(npm view "$package_name@$PACKAGE_VERSION" dist.integrity 2>/dev/null || true)"
           if [ -n "$registry_integrity" ]; then
             test "$registry_integrity" = "$PACKAGE_INTEGRITY"
           else
-            npm publish "$RUNNER_TEMP/$PACKAGE_FILENAME"
+            npm publish "$RUNNER_TEMP/$PACKAGE_FILENAME" --access public
           fi
       - name: Create GitHub release
         env:

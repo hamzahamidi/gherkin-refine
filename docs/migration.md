@@ -3,11 +3,11 @@
 The historical `.gherkin-lintrc` file is JSON and may contain comments. Run:
 
 ```sh
-gherkinlint migrate .gherkin-lintrc --dry-run
-gherkinlint migrate .gherkin-lintrc
+gherkin-refine migrate .gherkin-lintrc --dry-run
+gherkin-refine migrate .gherkin-lintrc
 ```
 
-The migration writes `gherkinlint.config.json` and does not replace an existing file unless `--force` is provided. Review every reported behavior difference before enabling the generated configuration.
+The migration writes `gherkin-refine.config.json` and does not replace an existing file unless `--force` is provided. Review every reported behavior difference before enabling the generated configuration.
 
 | Legacy rule | New rule | Status |
 | --- | --- | --- |

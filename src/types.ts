@@ -135,7 +135,7 @@ export interface LintSummary {
 
 export interface LintResult {
   readonly schemaVersion: 1;
-  readonly tool: Readonly<{ name: "gherkinlint"; version: string }>;
+  readonly tool: Readonly<{ name: "gherkin-refine"; version: string }>;
   readonly summary: LintSummary;
   readonly results: readonly FileResult[];
 }

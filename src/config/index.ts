@@ -33,6 +33,10 @@ export interface EffectiveConfig {
 }
 
 const CONFIG_FILES = [
+  "gherkin-refine.config.js",
+  "gherkin-refine.config.mjs",
+  "gherkin-refine.config.ts",
+  "gherkin-refine.config.json",
   "gherkinlint.config.js",
   "gherkinlint.config.mjs",
   "gherkinlint.config.ts",
@@ -258,7 +262,7 @@ function qualifyRuleId(namespace: string, id: string): string {
 }
 
 async function loadPlugins(cwd: string, specifiers: readonly string[]) {
-  const require = createRequire(pathToFileURL(resolve(cwd, "gherkinlint.config.mjs")));
+  const require = createRequire(pathToFileURL(resolve(cwd, "gherkin-refine.config.mjs")));
   const loaded = [];
   for (const specifier of [...new Set(specifiers)]) {
     try {
@@ -353,7 +357,7 @@ function readPackageName(resolvedFile: string): string | undefined {
 
 function namespaceFromPackageName(name: string): string {
   const last = name.split("/").at(-1) ?? name;
-  return last.replace(/^gherkinlint-plugin-/, "").replace(/^eslint-plugin-/, "");
+  return last.replace(/^gherkin-refine-plugin-/, "").replace(/^gherkinlint-plugin-/, "").replace(/^eslint-plugin-/, "");
 }
 
 function normalizePath(path: string): string {

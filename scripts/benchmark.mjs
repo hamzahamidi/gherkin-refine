@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { lintFiles } from "../dist/index.js";
 
-const temporary = await mkdtemp(join(tmpdir(), "gherkinlint-benchmark-"));
+const temporary = await mkdtemp(join(tmpdir(), "gherkin-refine-benchmark-"));
 const directory = join(temporary, "features");
 await mkdir(directory);
 

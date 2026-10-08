@@ -23,4 +23,4 @@ Recommended rules check correctness and use AST semantics. Size, naming, tag con
 
 `scenario-size`, `background-size`, `feature-size`, `name-length`, `tag-pattern`, `logical-keyword-order`, and formatting rules are disabled by default because teams can reasonably choose different styles.
 
-Use `gherkinlint --list-rules --format json` for machine-readable metadata and `gherkinlint --explain <rule-id>` for a local explanation.
+Use `gherkin-refine --list-rules --format json` for machine-readable metadata and `gherkin-refine --explain <rule-id>` for a local explanation.

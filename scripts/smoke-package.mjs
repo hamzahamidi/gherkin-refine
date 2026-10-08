@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const temporary = await mkdtemp(join(tmpdir(), "gherkinlint-smoke-"));
+const temporary = await mkdtemp(join(tmpdir(), "gherkin-refine-smoke-"));
 const fixture = join(temporary, "consumer");
 
 function run(command, args, cwd) {
@@ -32,7 +32,7 @@ try {
   run(process.execPath, ["node_modules/typescript/bin/tsc", "-p", "tsconfig.build.json"], root);
   const packed = npm(["pack", "--ignore-scripts", "--json", "--pack-destination", temporary], root);
   const packResult = JSON.parse(packed);
-  const packInfo = Array.isArray(packResult) ? packResult[0] : packResult.gherkinlint ?? packResult;
+  const packInfo = Array.isArray(packResult) ? packResult[0] : packResult?.filename ? packResult : Object.values(packResult)[0];
   assert.equal(typeof packInfo?.filename, "string", "npm pack must report the generated tarball");
   const tarball = join(temporary, packInfo.filename);
   npm(["install", "--prefix", fixture, "--no-save", "--ignore-scripts", "--no-audit", "--no-fund", tarball], root);
@@ -41,7 +41,7 @@ try {
   const featurePath = join(fixture, "features", "smoke.feature");
   await mkdir(join(fixture, "features"), { recursive: true });
   await writeFile(featurePath, feature);
-  const cliPath = join(fixture, "node_modules", ".bin", process.platform === "win32" ? "gherkinlint.cmd" : "gherkinlint");
+  const cliPath = join(fixture, "node_modules", ".bin", process.platform === "win32" ? "gherkin-refine.cmd" : "gherkin-refine");
   const cli = spawnSync(cliPath, ["features/smoke.feature", "--format", "json"], {
     cwd: fixture,
     encoding: "utf8",
@@ -50,21 +50,32 @@ try {
   assert.equal(cli.status, 1, `CLI returned ${cli.status}; stdout: ${cli.stdout}; stderr: ${cli.stderr}`);
   assert.equal(cli.stderr, "");
   assert.equal(JSON.parse(cli.stdout).results[0].diagnostics[0].ruleId, "no-duplicate-tags");
+  const legacyCliPath = join(fixture, "node_modules", ".bin", process.platform === "win32" ? "gherkinlint.cmd" : "gherkinlint");
+  const legacyCli = spawnSync(legacyCliPath, ["features/smoke.feature", "--format", "json"], {
+    cwd: fixture,
+    encoding: "utf8",
+    shell: process.platform === "win32"
+  });
+  assert.equal(legacyCli.status, 1, `Compatibility CLI returned ${legacyCli.status}; stdout: ${legacyCli.stdout}; stderr: ${legacyCli.stderr}`);
 
   const apiScript = join(fixture, "api-smoke.mjs");
   await writeFile(apiScript, `import assert from "node:assert/strict";
-import { lintText } from "gherkinlint";
+import { lintText } from "gherkin-refine";
 const result = await lintText(${JSON.stringify(feature)}, { filePath: "features/smoke.feature" });
 assert.equal(result.summary.errors, 1);
+assert.equal(result.tool.name, "gherkin-refine");
 `);
   run(process.execPath, [apiScript], fixture);
-  await access(join(fixture, "node_modules", "gherkinlint", "dist", "index.d.ts"));
+  const packageRoot = join(fixture, "node_modules", "gherkin-refine");
+  await access(join(packageRoot, "dist", "index.d.ts"));
+  await access(join(fixture, "node_modules", ".bin", process.platform === "win32" ? "gherkinlint.cmd" : "gherkinlint"));
   const packagedFiles = packInfo.files.map((item) => item.path);
   assert(packagedFiles.includes("dist/index.js"));
   assert(packagedFiles.includes("dist/index.d.ts"));
   assert(!packagedFiles.some((path) => path.startsWith("src/")));
-  const manifest = JSON.parse(await readFile(join(fixture, "node_modules", "gherkinlint", "package.json"), "utf8"));
+  const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
   assert.equal(manifest.type, "module");
+  assert.equal(manifest.bin["gherkin-refine"], "./dist/cli.js");
   assert.equal(manifest.bin.gherkinlint, "./dist/cli.js");
   process.stdout.write("package smoke passed\n");
 } finally {

@@ -1,9 +1,10 @@
 {
-  "name": "gherkinlint",
+  "name": "gherkin-refine",
   "version": "1.0.0",
-  "description": "A fast, deterministic Gherkin linter for Node.js, CI, and AI coding agents.",
+  "description": "A fast, deterministic Gherkin linter and safe fixer for Node.js, CI, and AI coding agents.",
   "type": "module",
   "bin": {
+    "gherkin-refine": "./dist/cli.js",
     "gherkinlint": "./dist/cli.js"
   },
   "exports": {
@@ -37,8 +38,11 @@
   },
   "keywords": [
     "gherkin",
+    "gherkin-lint",
+    "gherkinlint",
     "cucumber",
     "linter",
+    "autofix",
     "bdd",
     "typescript",
     "ai-agents"

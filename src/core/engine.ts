@@ -374,7 +374,7 @@ function buildResult(processed: readonly ProcessedFile[], options: LintOptions):
     ...(item.output !== undefined ? { output: item.output } : {})
   }));
   results.sort((left, right) => compareText(left.filePath, right.filePath));
-  return { schemaVersion: 1, tool: { name: "gherkinlint", version: VERSION }, summary, results };
+  return { schemaVersion: 1, tool: { name: "gherkin-refine", version: VERSION }, summary, results };
 }
 
 function validateExecutionOptions(options: LintOptions): void {
@@ -445,7 +445,7 @@ async function atomicWrite(path: string, content: string): Promise<void> {
   const { realpath } = await import("node:fs/promises");
   const target = await realpath(path);
   const fileStat = await stat(target);
-  const temporary = resolve(dirname(target), `.gherkinlint-${randomUUID()}.tmp`);
+  const temporary = resolve(dirname(target), `.gherkin-refine-${randomUUID()}.tmp`);
   try {
     await writeFile(temporary, content, { encoding: "utf8", flag: "wx", mode: fileStat.mode });
     await rename(temporary, target);

@@ -172,7 +172,7 @@ describe("lintText", () => {
 
   it("suppresses next-line and block diagnostics and reports unused directives", async () => {
     const source = `Feature: Suppression
-  # gherkinlint-disable-next-line no-duplicate-tags -- duplicate is fixture data
+  # gherkin-refine-disable-next-line no-duplicate-tags -- duplicate is fixture data
   @smoke @smoke
   Scenario: one
   # gherkinlint-disable name-length -- legacy threshold
@@ -207,6 +207,7 @@ describe("lintText", () => {
     const pluginDirectory = join(cwd, "node_modules", "gherkinlint-plugin-demo");
     await mkdir(pluginDirectory, { recursive: true });
     await writeFile(join(pluginDirectory, "package.json"), JSON.stringify({ name: "gherkinlint-plugin-demo", type: "module", main: "index.mjs" }));
+    await symlink(pluginDirectory, join(cwd, "node_modules", "gherkin-refine-plugin-demo"), "dir");
     await writeFile(join(pluginDirectory, "index.mjs"), `export default { rules: {
       "async-check": { meta: { description: "Async check", category: "correctness", recommended: false }, async run({ report }) { await Promise.resolve(); report({ message: "Async result", start: { line: 1, column: 1 } }); } },
       "reject-check": { meta: { description: "Reject check", category: "correctness", recommended: false }, async run() { await Promise.reject(new Error("plugin failure")); } },
@@ -214,7 +215,7 @@ describe("lintText", () => {
       "fix-two": { meta: { description: "Second fix", category: "formatting", recommended: false, fixable: true }, run({ report }) { report({ message: "Fix two", start: { line: 1, column: 1 }, fix: { range: [2, 4], text: "Two" } }); } },
       "fix-safe": { meta: { description: "Safe fix", category: "formatting", recommended: false, fixable: true }, run({ report }) { report({ message: "Safe fix", start: { line: 1, column: 7 }, fix: { range: [6, 7], text: "S" } }); } }
     } };`);
-    const config = { extends: [] as const, plugins: ["gherkinlint-plugin-demo"], rules: { "demo/async-check": "warn" as const } };
+    const config = { extends: [] as const, plugins: ["gherkin-refine-plugin-demo"], rules: { "demo/async-check": "warn" as const } };
     const result = await lintText("Feature: Plugin\n", { cwd, config });
     expect(result.results[0]?.diagnostics[0]?.message).toBe("Async result");
     expect(result.results[0]?.diagnostics[0]?.severity).toBe("warn");
@@ -341,8 +342,12 @@ describe("lintFiles", () => {
     expect(overridden.summary.errors).toBe(1);
     expect(overridden.summary.warnings).toBe(1);
 
-    await writeFile(join(cwd, "gherkinlint.config.ts"), `const maximum: number = 1;\nexport default { extends: [], rules: { "scenario-size": ["error", { maxSteps: maximum }] } };\n`);
+    await writeFile(join(cwd, "gherkin-refine.config.ts"), `const maximum: number = 1;\nexport default { extends: [], rules: { "scenario-size": ["error", { maxSteps: maximum }] } };\n`);
     const fromTypeScript = await lintFiles([current], { cwd });
     expect(fromTypeScript.summary.errors).toBe(1);
+    await rm(join(cwd, "gherkin-refine.config.ts"));
+    await writeFile(join(cwd, "gherkinlint.config.ts"), `const maximum: number = 1;\nexport default { extends: [], rules: { "scenario-size": ["error", { maxSteps: maximum }] } };\n`);
+    const fromLegacyTypeScript = await lintFiles([current], { cwd });
+    expect(fromLegacyTypeScript.summary.errors).toBe(1);
   });
 });

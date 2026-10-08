@@ -32,12 +32,14 @@ export default {
 
 ```js
 export default {
-  plugins: ["gherkinlint-plugin-company"],
+  plugins: ["gherkin-refine-plugin-company"],
   extends: ["recommended", "company/recommended"],
   rules: { "company/company-tag-policy": "warn" }
 };
 ```
 
 Rule calls may return a Promise. The engine awaits every call. A rejected rule fails linting with exit code 2 and identifies the plugin, rule, and file. Plugin imports resolve from the configuration directory. Missing plugins are not installed. There is no plugin sandbox and no network access in core rules.
+
+Plugin names can use the `gherkin-refine-plugin-` prefix. The previous `gherkinlint-plugin-` prefix remains accepted.
 
 Programmatic callers can pass a custom formatter function to `formatResult(result, formatter)`. Formatters receive a completed result and return a string. The CLI supports the built in formatters.

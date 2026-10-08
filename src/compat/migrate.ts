@@ -24,7 +24,7 @@ export async function migrateLegacyFile(
   if (!isRecord(legacy)) throw new ConfigError("Legacy configuration must be a JSON object.");
   const result = migrateLegacyConfig(legacy);
   if (!options.dryRun) {
-    const outputPath = resolve(options.outputPath ?? "gherkinlint.config.json");
+    const outputPath = resolve(options.outputPath ?? "gherkin-refine.config.json");
     if (!options.force) {
       try {
         const { access } = await import("node:fs/promises");

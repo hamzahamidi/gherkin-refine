@@ -13,7 +13,7 @@ const VALID_FORMATS: readonly FormatterName[] = ["stylish", "compact", "json", "
 export async function runCli(argv: readonly string[] = process.argv): Promise<void> {
   const program = new Command();
   program
-    .name("gherkinlint")
+    .name("gherkin-refine")
     .description("A deterministic Gherkin linter for Node.js, CI, and AI coding agents.")
     .version(VERSION)
     .argument("[paths...]", "Feature files, directories, or glob patterns")
@@ -47,7 +47,7 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
     .description("Convert a legacy .gherkin-lintrc JSON file")
     .argument("[config-file]", "Legacy JSON configuration", ".gherkin-lintrc")
     .option("--dry-run", "Print the generated configuration without writing a file")
-    .option("--output <path>", "Output configuration path", "gherkinlint.config.json")
+    .option("--output <path>", "Output configuration path", "gherkin-refine.config.json")
     .option("--force", "Replace an existing output file")
     .action(async (configFile: string) => {
       const options = migrateCommand.opts<{ dryRun?: boolean; output?: string; force?: boolean }>();
@@ -59,7 +59,7 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
       process.stdout.write(result.content);
       for (const item of result.mapped) process.stderr.write(`mapped: ${item}\n`);
       for (const item of result.unsupported) process.stderr.write(`unsupported: ${item}\n`);
-      if (!options.dryRun) process.stderr.write(`Wrote ${resolve(options.output ?? "gherkinlint.config.json")}\n`);
+      if (!options.dryRun) process.stderr.write(`Wrote ${resolve(options.output ?? "gherkin-refine.config.json")}\n`);
     });
 
   try {

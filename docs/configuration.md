@@ -1,11 +1,11 @@
 # Configuration
 
-Configuration files are `gherkinlint.config.js`, `gherkinlint.config.mjs`, `gherkinlint.config.ts`, and `gherkinlint.config.json`. The first matching file is searched from the working directory upward. Use `--config` to select a specific file.
+Configuration files are `gherkin-refine.config.js`, `gherkin-refine.config.mjs`, `gherkin-refine.config.ts`, and `gherkin-refine.config.json`. The first matching file is searched from the working directory upward. Existing `gherkinlint.config.*` files are still discovered. Use `--config` to select a specific file.
 
 The recommended preset is enabled when no `extends` field is provided. Set `extends: []` to disable preset rules. Rule severities are `off`, `warn`, and `error`, or their numeric forms `0`, `1`, and `2`. A rule can include options as `[severity, options]`.
 
 ```js
-import { defineConfig } from "gherkinlint";
+import { defineConfig } from "gherkin-refine";
 
 export default defineConfig({
   extends: ["recommended"],
@@ -29,18 +29,18 @@ TypeScript config files run through Node's native type stripping on the supporte
 
 ## Inline suppression
 
-Comments support `gherkinlint-disable-next-line`, `gherkinlint-disable-line`, `gherkinlint-disable-file`, `gherkinlint-disable`, and `gherkinlint-enable`. Use comma or whitespace separated rule IDs. A reason follows `--`.
+Comments support `gherkin-refine-disable-next-line`, `gherkin-refine-disable-line`, `gherkin-refine-disable-file`, `gherkin-refine-disable`, and `gherkin-refine-enable`. The previous `gherkinlint-*` forms remain accepted. Use comma or whitespace separated rule IDs. A reason follows `--`.
 
 ```gherkin
-# gherkinlint-disable-next-line name-length -- historical user-facing phrase
+# gherkin-refine-disable-next-line name-length -- historical user-facing phrase
 Scenario: A deliberately long scenario name
 ```
 
 ```gherkin
-# gherkinlint-disable scenario-size
+# gherkin-refine-disable scenario-size
 Scenario: Legacy scenario
   Given the existing steps remain unchanged
-# gherkinlint-enable scenario-size
+# gherkin-refine-enable scenario-size
 ```
 
 Run with `--report-unused-disable-directives` or set `reportUnusedDisableDirectives: true` to report suppressions that matched no diagnostics. The rule `unused-disable-directive` accepts `warn`, `error`, or `off` severity.
