@@ -30,7 +30,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage",
+    "coverage": "npm run build && vitest run --coverage",
     "smoke": "node scripts/smoke-package.mjs",
     "bench": "node --expose-gc scripts/benchmark.mjs",
     "check:pack": "npm pack --dry-run",
