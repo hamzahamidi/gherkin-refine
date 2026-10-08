@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5 (2026-10-08)
+
+Rejects autofix results that produce invalid Gherkin before any file is written.
+
 ## 1.0.4 (2026-10-08)
 
 Keeps whitespace checks active after Doc Strings with delimiter suffixes.
