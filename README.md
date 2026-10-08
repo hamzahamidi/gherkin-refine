@@ -1,6 +1,7 @@
 # Gherkin Refine
 
-[![CI and coverage](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkin-refine/ci.yml?branch=main&label=CI%20and%20coverage)](https://github.com/hamzahamidi/gherkin-refine/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkin-refine/ci.yml?branch=main&label=CI)](https://github.com/hamzahamidi/gherkin-refine/actions/workflows/ci.yml)
+[![Code coverage](https://codecov.io/github/hamzahamidi/gherkin-refine/graph/badge.svg)](https://codecov.io/github/hamzahamidi/gherkin-refine)
 [![npm version](https://img.shields.io/npm/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![Node.js](https://img.shields.io/node/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![License](https://img.shields.io/github/license/hamzahamidi/gherkin-refine.svg)](LICENSE)
