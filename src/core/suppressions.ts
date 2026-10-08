@@ -60,6 +60,7 @@ function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic):
   let oneShot = false;
   const disableAll = new Set<Directive>();
   const disabledRules = new Map<string, Set<Directive>>();
+  const enabledRules = new Set<string>();
   for (const directive of directives) {
     if (directive.kind === "disable-next-line" && diagnostic.start.line === directive.line + 1 && matchesRules(directive, diagnostic.ruleId)) {
       directive.used = true;
@@ -72,6 +73,7 @@ function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic):
     if (directive.kind === "disable-file" || directive.kind === "disable") {
       if (!directive.rules) {
         disableAll.add(directive);
+        enabledRules.clear();
       } else {
         for (const rule of directive.rules) {
           const active = disabledRules.get(rule) ?? new Set<Directive>();
@@ -83,13 +85,17 @@ function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic):
       if (!directive.rules) {
         disableAll.clear();
         disabledRules.clear();
+        enabledRules.clear();
       } else {
-        for (const rule of directive.rules) disabledRules.delete(rule);
+        for (const rule of directive.rules) {
+          disabledRules.delete(rule);
+          enabledRules.add(rule);
+        }
       }
     }
   }
   const activeRuleDirectives = disabledRules.get(diagnostic.ruleId);
-  const suppressed = oneShot || disableAll.size > 0 || Boolean(activeRuleDirectives?.size);
+  const suppressed = oneShot || (disableAll.size > 0 && !enabledRules.has(diagnostic.ruleId)) || Boolean(activeRuleDirectives?.size);
   if (suppressed) {
     for (const directive of disableAll) directive.used = true;
     for (const directive of activeRuleDirectives ?? []) directive.used = true;
