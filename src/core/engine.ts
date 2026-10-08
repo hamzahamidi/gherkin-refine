@@ -150,6 +150,10 @@ async function processOne(
   for (;;) {
     const parsed = parseGherkin(currentSource, file.displayPath);
     if (!parsed.document) {
+      if (currentSource !== file.source) {
+        currentSource = file.source;
+        appliedFixes.length = 0;
+      }
       finalDocument = undefined;
       finalDiagnostics = parsed.errors.map((error) => ({
         filePath: file.displayPath,
@@ -230,7 +234,6 @@ async function invokeRule(
   signal: AbortSignal | undefined,
   pluginNames: ReadonlyMap<string, string>
 ): Promise<void> {
-  const before = diagnostics.length;
   const context = {
     document,
     options: setting.options ?? rule.meta.defaultOptions ?? {},
@@ -247,7 +250,6 @@ async function invokeRule(
     const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     throw new LintExecutionError(`Rule ${ruleId} from ${plugin} failed for ${document.filePath}: ${reason}`, { cause: error });
   }
-  if (diagnostics.length < before) throw new LintExecutionError(`Rule ${ruleId} removed diagnostics while running.`);
 }
 
 async function runProjectRules(

@@ -57,9 +57,9 @@ function parseDirectives(document: LintDocument): Directive[] {
 }
 
 function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic): boolean {
-  let disabledAll = false;
   let oneShot = false;
-  const disabledRules = new Set<string>();
+  const disableAll = new Set<Directive>();
+  const disabledRules = new Map<string, Set<Directive>>();
   for (const directive of directives) {
     if (directive.kind === "disable-next-line" && diagnostic.start.line === directive.line + 1 && matchesRules(directive, diagnostic.ruleId)) {
       directive.used = true;
@@ -69,23 +69,32 @@ function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic):
       oneShot = true;
     }
     if (directive.line >= diagnostic.start.line) break;
-    if (directive.kind === "disable-file") {
-      disabledAll = true;
-      directive.used = true;
-    } else if (directive.kind === "disable") {
-      if (!directive.rules) disabledAll = true;
-      else for (const rule of directive.rules) disabledRules.add(rule);
-      if (matchesRules(directive, diagnostic.ruleId)) directive.used = true;
+    if (directive.kind === "disable-file" || directive.kind === "disable") {
+      if (!directive.rules) {
+        disableAll.add(directive);
+      } else {
+        for (const rule of directive.rules) {
+          const active = disabledRules.get(rule) ?? new Set<Directive>();
+          active.add(directive);
+          disabledRules.set(rule, active);
+        }
+      }
     } else if (directive.kind === "enable") {
       if (!directive.rules) {
-        disabledAll = false;
+        disableAll.clear();
         disabledRules.clear();
       } else {
         for (const rule of directive.rules) disabledRules.delete(rule);
       }
     }
   }
-  return oneShot || disabledAll || disabledRules.has(diagnostic.ruleId);
+  const activeRuleDirectives = disabledRules.get(diagnostic.ruleId);
+  const suppressed = oneShot || disableAll.size > 0 || Boolean(activeRuleDirectives?.size);
+  if (suppressed) {
+    for (const directive of disableAll) directive.used = true;
+    for (const directive of activeRuleDirectives ?? []) directive.used = true;
+  }
+  return suppressed;
 }
 
 function matchesRules(directive: Directive, ruleId: string): boolean {

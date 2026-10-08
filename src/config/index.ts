@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
-import { extname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { minimatch } from "minimatch";
 import type {
@@ -63,16 +63,16 @@ export async function loadConfig(cwd: string, explicitPath?: string): Promise<Lo
       throw new ConfigError(`Could not load configuration ${configPath}: ${messageOf(error)}`, { cause: error });
     }
   }
-  return loadConfigObject(cwd, config);
+  return loadConfigObject(cwd, config, configPath ? dirname(configPath) : cwd);
 }
 
-export async function loadConfigObject(cwd: string, input: LintConfig): Promise<LoadedConfig> {
+export async function loadConfigObject(cwd: string, input: LintConfig, pluginResolutionDirectory = cwd): Promise<LoadedConfig> {
   validateConfigShape(input);
   const pluginSpecifiers = input.plugins ?? [];
   if (!Array.isArray(pluginSpecifiers) || !pluginSpecifiers.every((item) => typeof item === "string")) {
     throw new ConfigError("Configuration field plugins must be an array of package names.");
   }
-  const plugins = await loadPlugins(cwd, pluginSpecifiers);
+  const plugins = await loadPlugins(pluginResolutionDirectory, pluginSpecifiers);
   const fileRuleMap = new Map<string, RuleModule<unknown>>(Object.entries(fileRules));
   const projectRuleMap = new Map<string, ProjectRuleModule<unknown>>(Object.entries(projectRules));
   const pluginNames = new Map<string, string>();
@@ -137,16 +137,6 @@ export function validateConfiguration(loaded: LoadedConfig, filePaths: readonly 
     const options = setting.options ?? module.meta.defaultOptions ?? {};
     if (module.validateOptions && !module.validateOptions(options)) {
       throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}.`);
-    }
-  }
-  for (const filePath of filePaths) {
-    const effective = effectiveConfig(loaded, filePath, cwd);
-    for (const [id, setting] of effective.rules) {
-      const module = loaded.fileRules.get(id) ?? loaded.projectRules.get(id);
-      if (!module) throw new ConfigError(`Unknown rule ${JSON.stringify(id)} in configuration.`);
-      if (module.validateOptions && !module.validateOptions(setting.options ?? module.meta.defaultOptions ?? {})) {
-        throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}.`);
-      }
     }
   }
 }
@@ -254,7 +244,13 @@ function mergeConfigs(left: LintConfig, right: LintConfig): LintConfig {
 
 function qualifyConfig(namespace: string, config: LintConfig): LintConfig {
   const rules = Object.fromEntries(Object.entries(config.rules ?? {}).map(([id, setting]) => [qualifyRuleId(namespace, id), setting]));
-  return { ...config, rules };
+  const overrides = config.overrides?.map((override) => ({
+    ...override,
+    ...(override.rules ? {
+      rules: Object.fromEntries(Object.entries(override.rules).map(([id, setting]) => [qualifyRuleId(namespace, id), setting]))
+    } : {})
+  }));
+  return { ...config, rules, ...(overrides ? { overrides } : {}) };
 }
 
 function qualifyRuleId(namespace: string, id: string): string {
