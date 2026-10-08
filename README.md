@@ -60,6 +60,45 @@ gherkin-refine features/
 
 Recommended rules check duplicate tags, duplicate Feature and Scenario names, and unused or undeclared Scenario Outline variables. Subjective style rules are off by default.
 
+## Safe fix preview
+
+Formatting rules are opt in. Enable `no-extra-blank-lines` in `gherkin-refine.config.json`:
+
+```json
+{
+  "rules": {
+    "no-extra-blank-lines": "error"
+  }
+}
+```
+
+Given `features/checkout.feature`:
+
+```gherkin
+Feature: Checkout
+
+
+  Scenario: place an order
+    Given a customer has items in their basket
+    When they complete checkout
+    Then the order is placed
+```
+
+Preview the safe fix without changing the file:
+
+```sh
+npx gherkin-refine features/checkout.feature --fix-dry-run
+```
+
+```text
+features/checkout.feature
+  3:1  error  Unexpected consecutive blank line.  no-extra-blank-lines
+
+1 error, 0 warnings
+```
+
+Run the same command with `--fix` to remove the extra blank line. The file then has one blank line between the Feature and Scenario.
+
 ## Configuration
 
 Create `gherkin-refine.config.js`, `.mjs`, `.ts`, or `.json`:
