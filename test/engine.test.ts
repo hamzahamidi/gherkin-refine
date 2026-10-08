@@ -202,6 +202,47 @@ describe("lintText", () => {
     expect(result.results[0]?.diagnostics[0]?.start.line).toBe(8);
   });
 
+  it("reenables a selected rule after a blanket disable", async () => {
+    const source = `# gherkin-refine-disable
+Feature: Suppression
+  # gherkin-refine-enable no-duplicate-tags
+  @duplicate @duplicate
+  Scenario: long scenario
+    Given one
+    When two
+`;
+    const result = await lintText(source, {
+      reportUnusedDisableDirectives: true,
+      config: {
+        extends: [],
+        rules: {
+          "no-duplicate-tags": "error",
+          "scenario-size": ["error", { maxSteps: 1 }]
+        }
+      }
+    });
+
+    expect(result.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual(["no-duplicate-tags"]);
+  });
+
+  it("does not count an exempted blanket disable as used by a one-line directive", async () => {
+    const source = `# gherkin-refine-disable
+# gherkin-refine-enable no-duplicate-tags
+Feature: Suppression
+  # gherkin-refine-disable-next-line no-duplicate-tags
+  @duplicate @duplicate
+  Scenario: one
+    Given a value
+`;
+    const result = await lintText(source, {
+      reportUnusedDisableDirectives: true,
+      config: { extends: [], rules: { "no-duplicate-tags": "error" } }
+    });
+
+    expect(result.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual(["unused-disable-directive"]);
+    expect(result.results[0]?.diagnostics[0]?.start.line).toBe(1);
+  });
+
   it("limits disable-file directives to the listed rules", async () => {
     const source = `# gherkin-refine-disable-file name-length -- long names are allowed
 Feature: F
