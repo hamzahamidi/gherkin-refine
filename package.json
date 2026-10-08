@@ -1,6 +1,6 @@
 {
   "name": "gherkin-refine",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A fast, deterministic Gherkin linter and safe fixer for Node.js, CI, and AI coding agents.",
   "type": "module",
   "bin": {
@@ -30,6 +30,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
     "smoke": "node scripts/smoke-package.mjs",
     "bench": "node --expose-gc scripts/benchmark.mjs",
     "check:pack": "npm pack --dry-run",
@@ -39,12 +40,18 @@
   "keywords": [
     "gherkin",
     "gherkin-lint",
+    "gherkin-linter",
     "gherkinlint",
     "cucumber",
+    "cucumber-lint",
     "linter",
     "autofix",
+    "gherkin-autofix",
     "bdd",
+    "feature-files",
     "typescript",
+    "nodejs",
+    "sarif",
     "ai-agents"
   ],
   "author": {
@@ -56,6 +63,7 @@
     "url": "git+ssh://git@github.com/hamzahamidi/gherkinlint.git"
   },
   "homepage": "https://github.com/hamzahamidi/gherkinlint#readme",
+  "funding": "https://github.com/sponsors/hamzahamidi",
   "bugs": {
     "url": "https://github.com/hamzahamidi/gherkinlint/issues"
   },
@@ -69,6 +77,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",

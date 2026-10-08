@@ -1,5 +1,11 @@
 # Gherkin Refine
 
+[![CI and coverage](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkinlint/ci.yml?branch=main&label=CI%20and%20coverage)](https://github.com/hamzahamidi/gherkinlint/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
+[![Node.js](https://img.shields.io/node/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
+[![License](https://img.shields.io/github/license/hamzahamidi/gherkinlint.svg)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub-ff69b4.svg)](https://github.com/sponsors/hamzahamidi)
+
 Gherkin Refine is a TypeScript Gherkin linter for Node.js projects. It uses the official Cucumber parser and provides a CLI, a JavaScript API, plugin rules, inline suppression, safe autofixes, JSON, NDJSON, and SARIF output.
 
 It targets Node.js 22.18 or later. The runtime is ESM and parses Feature, Rule, Scenario, Background, Examples, localized keywords, data tables, and doc strings through `@cucumber/gherkin`.
@@ -121,7 +127,10 @@ The result schema is in [`schemas/result.schema.json`](schemas/result.schema.jso
 ```sh
 npm ci
 npm run validate
+npm run coverage
 ```
+
+Coverage reports include lines, branches, functions, and statements for library modules. CLI behavior has separate process-level tests. CI checks minimum coverage of 70% for lines and functions, 68% for statements, and 50% for branches. HTML and LCOV reports are attached to the CI run for 14 days.
 
 The package is MIT licensed. It has no telemetry and core rules make no network requests. See [`docs/architecture.md`](docs/architecture.md) and [`docs/rules.md`](docs/rules.md).
 
