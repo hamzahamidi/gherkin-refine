@@ -13,7 +13,7 @@ It targets Node.js 22.18 or later. The runtime is ESM and parses Feature, Rule, 
 
 ## Documentation
 
-Start with the [documentation index](docs/index.md), or jump to [configuration](docs/configuration.md), [rules](docs/rules.md), [plugins](docs/plugins.md), [migration](docs/migration.md), or [AI agent integration](docs/agent-integration.md).
+Start with the [documentation index](docs/index.md), or jump to [configuration](docs/configuration.md), [rules](docs/rules.md), [plugins](docs/plugins.md), [migration](docs/migration.md), or [AI agent integration](docs/agent-integration.md). For a step by step introduction, see the [getting started tutorial](https://hamidihamza.com/notes/add-gherkin-linting-nodejs/).
 
 ## Install
 
