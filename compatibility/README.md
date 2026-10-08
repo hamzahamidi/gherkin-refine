@@ -40,8 +40,8 @@ The comparator permits one asymmetric exception: a changed description or commen
 
 ## Reports and limits
 
-Every run writes `compatibility-report.json`, including artifact mode, tool and comparison parser versions, fixture classifications, recommended-rule findings, changed-file counts, permitted prose edits, and failures. Total elapsed time includes upstream downloads in full mode; each source's elapsed time measures its checks after downloading. Peak RSS comes from Node's `process.resourceUsage().maxRSS`, in KiB, for the harness process only, excluding npm child processes. These measurements are informational and have no timing or memory pass threshold.
+Every run writes `compatibility-report.json`, including artifact mode, tool, tested parser, and comparison parser versions, fixture classifications, recommended-rule findings, changed-file counts, permitted prose edits, and failures. Total elapsed time includes upstream downloads in full mode; each source's elapsed time measures its checks after downloading. Peak RSS comes from Node's `process.resourceUsage().maxRSS`, in KiB, for the harness process only, excluding npm child processes. These measurements are informational and have no timing or memory pass threshold.
 
-The comparison parser is the version pinned by this project's lockfile. The tested package's own parsing behavior is checked through its API diagnostics. This suite is not an independent parser implementation or proof of arbitrary step-definition semantics.
+The comparison parser is the version pinned by this project's lockfile. The tested package's own parsing behavior is checked through its API diagnostics. Files are checked individually, so this corpus does not exercise cross-file project rules. This suite is not an independent parser implementation or proof of arbitrary step-definition semantics.
 
 All three initial sources are Cucumber-maintained reference or acceptance projects. They provide many syntax conventions, but do not establish independent application adoption. A later expansion should add unrelated application repositories and Python/Java conventions. See [results](RESULTS.md) for the measured first run.

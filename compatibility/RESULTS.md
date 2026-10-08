@@ -1,6 +1,6 @@
 # Compatibility results
 
-Published npm `gherkin-refine@1.0.6`, comparison parser `@cucumber/gherkin@42.0.1`, October 8, 2026. Full manifest run on Node 26.5.1, macOS.
+Published npm `gherkin-refine@1.0.6`, tested and comparison parser `@cucumber/gherkin@42.0.1`, October 8, 2026. Full manifest run on Node 26.5.1, macOS.
 
 | Source | Valid | Intentionally invalid | Files changed | Permitted prose/comment AST changes | Failures |
 | --- | ---: | ---: | ---: | ---: | ---: |

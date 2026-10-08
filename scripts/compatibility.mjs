@@ -17,7 +17,7 @@ for (const arg of args) assert(['--full', '--published'].includes(arg), `Unknown
 const manifest = JSON.parse(await readFile(join(root, 'compatibility/corpus.json'), 'utf8'));
 const temporary = await mkdtemp(join(tmpdir(), 'gherkin-refine-compatibility-'));
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
-const report = { schemaVersion: 1, mode: args.has('--full') ? 'full' : 'sample', artifact: args.has('--published') ? 'published' : 'candidate', toolVersion: null, parserVersion: null, sources: [], failures: [] };
+const report = { schemaVersion: 1, mode: args.has('--full') ? 'full' : 'sample', artifact: args.has('--published') ? 'published' : 'candidate', toolVersion: null, parserVersion: null, testedParserVersion: null, sources: [], failures: [] };
 const run = (command, commandArgs, cwd = temporary) => execFileSync(command, commandArgs, { cwd, timeout: 120_000, maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 const parse = (source) => new Parser(new AstBuilder(IdGenerator.incrementing()), new GherkinClassicTokenMatcher()).parse(source);
 
@@ -32,6 +32,8 @@ try {
   report.toolVersion = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).version;
   const require = createRequire(import.meta.url);
   report.parserVersion = JSON.parse(await readFile(require.resolve('@cucumber/gherkin/package.json'), 'utf8')).version;
+  const packageRequire = createRequire(join(packageRoot, 'package.json'));
+  report.testedParserVersion = JSON.parse(await readFile(packageRequire.resolve('@cucumber/gherkin/package.json'), 'utf8')).version;
   const started = performance.now();
   for (const source of manifest.sources) {
     assert.match(source.commit, /^[a-f0-9]{40}$/);
