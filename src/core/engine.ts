@@ -151,8 +151,7 @@ async function processOne(
     const parsed = parseGherkin(currentSource, file.displayPath);
     if (!parsed.document) {
       if (currentSource !== file.source) {
-        currentSource = file.source;
-        appliedFixes.length = 0;
+        throw new LintExecutionError(`Autofix produced invalid Gherkin for ${file.displayPath}; no files were changed.`);
       }
       finalDocument = undefined;
       finalDiagnostics = parsed.errors.map((error) => ({

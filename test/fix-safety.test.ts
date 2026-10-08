@@ -27,12 +27,24 @@ async function createPlugin(cwd: string): Promise<void> {
     "out-of-range-fix": {
       meta: { description: "Out of range fix", category: "formatting", recommended: false, fixable: true },
       run({ document, report }) { report({ message: "Invalid range", start: { line: 1, column: 1 }, fix: { range: [0, document.source.length + 1], text: "" } }); }
+    },
+    "valid-first-pass": {
+      meta: { description: "Valid first pass", category: "formatting", recommended: false, fixable: true },
+      run({ document, report }) { if (document.source.includes("Feature: Break")) report({ message: "Rename feature", start: { line: 1, column: 10 }, fix: { range: [9, 14], text: "Clean" } }); }
+    },
+    "invalid-after-first-pass": {
+      meta: { description: "Invalid later pass", category: "formatting", recommended: false, fixable: true },
+      run({ document, report }) { if (document.source.includes("Feature: Clean")) report({ message: "Break feature", start: { line: 1, column: 1 }, fix: { range: [0, 7], text: "Scenario" } }); }
+    },
+    "valid-a-fix": {
+      meta: { description: "Valid fix in earlier file", category: "formatting", recommended: false, fixable: true },
+      run({ document, report }) { if (document.source.includes("Feature: Good")) report({ message: "Rename earlier feature", start: { line: 1, column: 10 }, fix: { range: [9, 13], text: "Done" } }); }
     }
   } };`);
 }
 
 describe("autofix safety", () => {
-  it("does not write a plugin fix that makes a feature file invalid", async () => {
+  it("rejects a plugin fix that makes a feature file invalid without writing it", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "gherkin-refine-fix-"));
     directories.push(cwd);
     await createPlugin(cwd);
@@ -40,16 +52,43 @@ describe("autofix safety", () => {
     const source = "Feature: Valid\n  Scenario: Existing\n    Given a value\n";
     await writeFile(filePath, source);
 
-    const result = await lintFiles([filePath], {
+    await expect(lintFiles([filePath], {
       cwd,
       fix: true,
       config: { extends: [], plugins: ["gherkinlint-plugin-fix-check"], rules: { "fix-check/invalid-gherkin-fix": "error" } }
-    });
+    })).rejects.toThrow("Autofix produced invalid Gherkin");
 
     expect(await readFile(filePath, "utf8")).toBe(source);
-    expect(result.results[0]?.output).toBeUndefined();
-    expect(result.results[0]?.fixes).toBeUndefined();
-    expect(result.results[0]?.diagnostics.map(({ ruleId }) => ruleId)).toContain("parsing-error");
+  });
+
+  it("rejects a later invalid fix before writing any files", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "gherkin-refine-fix-"));
+    directories.push(cwd);
+    await createPlugin(cwd);
+    const firstPath = join(cwd, "a.feature");
+    const secondPath = join(cwd, "b.feature");
+    const firstSource = "Feature: Good\n  Scenario: First\n";
+    const secondSource = "Feature: Break\n  Scenario: Second\n";
+    await writeFile(firstPath, firstSource);
+    await writeFile(secondPath, secondSource);
+
+    await expect(lintFiles([firstPath, secondPath], {
+      cwd,
+      concurrency: 1,
+      fix: true,
+      config: {
+        extends: [],
+        plugins: ["gherkinlint-plugin-fix-check"],
+        rules: {
+          "fix-check/valid-a-fix": "error",
+          "fix-check/valid-first-pass": "error",
+          "fix-check/invalid-after-first-pass": "error"
+        }
+      }
+    })).rejects.toThrow("Autofix produced invalid Gherkin");
+
+    expect(await readFile(firstPath, "utf8")).toBe(firstSource);
+    expect(await readFile(secondPath, "utf8")).toBe(secondSource);
   });
 
   it("rejects plugin fix ranges outside the source and preserves the file", async () => {
