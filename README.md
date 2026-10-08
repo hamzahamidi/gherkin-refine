@@ -1,9 +1,9 @@
 # Gherkin Refine
 
-[![CI and coverage](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkinlint/ci.yml?branch=main&label=CI%20and%20coverage)](https://github.com/hamzahamidi/gherkinlint/actions/workflows/ci.yml)
+[![CI and coverage](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkin-refine/ci.yml?branch=main&label=CI%20and%20coverage)](https://github.com/hamzahamidi/gherkin-refine/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![Node.js](https://img.shields.io/node/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
-[![License](https://img.shields.io/github/license/hamzahamidi/gherkinlint.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/hamzahamidi/gherkin-refine.svg)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/sponsor-GitHub-ff69b4.svg)](https://github.com/sponsors/hamzahamidi)
 
 Gherkin Refine is a TypeScript Gherkin linter for Node.js projects. It uses the official Cucumber parser and provides a CLI, a JavaScript API, plugin rules, inline suppression, safe autofixes, JSON, NDJSON, and SARIF output.

@@ -60,12 +60,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/hamzahamidi/gherkinlint.git"
+    "url": "git+ssh://git@github.com/hamzahamidi/gherkin-refine.git"
   },
-  "homepage": "https://github.com/hamzahamidi/gherkinlint#readme",
+  "homepage": "https://github.com/hamzahamidi/gherkin-refine#readme",
   "funding": "https://github.com/sponsors/hamzahamidi",
   "bugs": {
-    "url": "https://github.com/hamzahamidi/gherkinlint/issues"
+    "url": "https://github.com/hamzahamidi/gherkin-refine/issues"
   },
   "dependencies": {
     "@cucumber/gherkin": "^42.0.1",

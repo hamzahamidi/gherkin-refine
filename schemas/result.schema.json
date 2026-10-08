@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/hamzahamidi/gherkinlint/blob/main/schemas/result.schema.json",
+  "$id": "https://github.com/hamzahamidi/gherkin-refine/blob/main/schemas/result.schema.json",
   "title": "gherkin-refine result",
   "type": "object",
   "required": ["schemaVersion", "tool", "summary", "results"],
