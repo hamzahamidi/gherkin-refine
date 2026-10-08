@@ -45,9 +45,38 @@ jobs:
       - run: npm ci
       - run: npm run coverage
       - name: Upload coverage report
+        if: always() && hashFiles('coverage/lcov.info') != ''
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
           if-no-files-found: error
           retention-days: 14
+
+  codecov:
+    name: Upload coverage to Codecov
+    needs: coverage
+    if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Download coverage report
+        id: report
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage
+      - name: Upload coverage to Codecov
+        if: steps.report.outcome == 'success'
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          use_oidc: true
+          files: ./coverage/lcov.info
+          version: v11.3.1
+          fail_ci_if_error: true
