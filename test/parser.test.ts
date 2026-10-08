@@ -16,6 +16,21 @@ function parsedDocument(source: string) {
 }
 
 describe("Gherkin document parsing", () => {
+  it.each(["", "# ordinary comment\n"])("handles featureless documents: %j", (source) => {
+    const document = parsedDocument(source);
+    expect(document.feature).toBeUndefined();
+    expect(document.language).toBe("en");
+    const visited: unknown[] = [];
+    forEachRule(document, rule => visited.push(rule));
+    forEachScenario(document, scenario => visited.push(scenario));
+    forEachStep(document, step => visited.push(step));
+    forEachExamples(document, examples => visited.push(examples));
+    forEachTag(document, tag => visited.push(tag));
+    expect(visited).toEqual([]);
+    expect(document.textForRange(document.rangeForLine(1))).toBe(source.split("\n")[0]);
+    expect(sourceRange(document, 1, 1, source.length + 5)).toEqual([0, source.length]);
+  });
+
   it("reports parser failures with a usable source location", () => {
     const result = parseGherkin("Scenario: outside a Feature\n", "invalid.feature");
 

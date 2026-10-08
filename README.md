@@ -205,7 +205,7 @@ npm run validate
 npm run coverage
 ```
 
-Coverage reports include lines, branches, functions, and statements for library modules. CLI behavior has separate process-level tests. CI checks minimum coverage of 88% for lines, 85% for functions, 84% for statements, and 73% for branches. HTML and LCOV reports are attached to the CI run for 14 days.
+Coverage reports include lines, branches, functions, and statements for library modules. CLI behavior has separate process-level tests. CI checks minimum coverage of 98% for lines, 97% for functions, 97% for statements, and 90% for branches. Codecov also tracks partial coverage on lines with untested branches, so its percentage can be lower than the V8 line percentage. HTML and LCOV reports are attached to the CI run for 14 days.
 
 The package is MIT licensed. It has no telemetry and core rules make no network requests. See [`docs/architecture.md`](docs/architecture.md) and [`docs/rules.md`](docs/rules.md).
 

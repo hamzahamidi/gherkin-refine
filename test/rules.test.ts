@@ -28,6 +28,81 @@ function docStringContents(source: string): string[] {
 }
 
 describe("opt in rule behavior", () => {
+  it.each(["", "# comment only\n"])("runs every file rule on a featureless document: %j", async source => {
+    const result = await lintText(source, { config: { extends: [], rules: {
+      "no-duplicate-tags": "error", "no-unused-outline-variables": "error", "no-undefined-outline-variables": "error",
+      "scenario-size": "error", "background-size": "error", "feature-size": "error", "name-length": "error",
+      "tag-pattern": "error", "logical-keyword-order": "error", "no-trailing-whitespace": "error", "no-extra-blank-lines": "error"
+    } } });
+    expect(result.results[0]?.diagnostics).toEqual([]);
+  });
+
+  it.each([
+    ["name-length", false], ["name-length", { max: 0 }], ["name-length", { max: 1.5 }],
+    ["scenario-size", []], ["scenario-size", { maxSteps: -1 }],
+    ["feature-size", { maxScenarios: 0 }], ["feature-size", { maxScenarios: "2" }],
+    ["tag-pattern", {}], ["tag-pattern", { pattern: 2 }], ["tag-pattern", { pattern: "[" }]
+  ])("rejects invalid options for %s: %j", async (rule, options) => {
+    await expect(lintText("Feature: F\n", { config: { extends: [], rules: { [rule as string]: ["error", options] } } })).rejects.toThrow("Invalid options for rule");
+  });
+
+  it("uses outline placeholders in Doc Strings and data tables", async () => {
+    const source = `Feature: Arguments
+  Scenario Outline: Doc String
+    Given a document
+      """
+      <body> <missing>
+      """
+    Examples:
+      | body | unused |
+      | one  | two    |
+  Scenario Outline: Table
+    Given a table
+      | value   |
+      | <value> |
+    Examples:
+      | value |
+      | one   |
+`;
+    const result = await lintText(source);
+    expect(result.results[0]?.diagnostics.map(d => [d.ruleId, d.message])).toEqual([
+      ["no-undefined-outline-variables", "Placeholder <missing> has no matching Examples column."],
+      ["no-unused-outline-variables", "Scenario Outline variable <unused> is not used."]
+    ]);
+  });
+
+  it("checks placeholders against every Examples table, including empty tables", async () => {
+    const result = await lintText(`Feature: Examples
+  Scenario Outline: Different headers
+    Given <value> and <other>
+    Examples: first
+      | value | other |
+      | one   | two   |
+    Examples: second
+      | value |
+      | three |
+  Scenario Outline: Empty
+    Given <absent>
+    Examples:
+`);
+    expect(result.results[0]?.diagnostics.map(d => d.message)).toEqual([
+      "Placeholder <other> has no matching Examples column.", "Placeholder <absent> has no matching Examples column."
+    ]);
+  });
+
+  it("allows conjunction and wildcard keywords between semantic stages", async () => {
+    const result = await lintText("Feature: F\n  Scenario: S\n    Given one\n    And two\n    * three\n    When four\n    But five\n    Then six\n", {
+      config: { extends: [], rules: { "logical-keyword-order": "error" } }
+    });
+    expect(result.summary.errors).toBe(0);
+  });
+
+  it("removes a terminal extra blank line", async () => {
+    const result = await lintText("Feature: F\n\n  ", { fix: true, config: { extends: [], rules: { "no-extra-blank-lines": "error" } } });
+    expect(result.results[0]?.output).toBe("Feature: F\n\n");
+    expect(result.results[0]?.fixes).toEqual([{ range: [12, 14], text: "" }]);
+  });
+
   it("limits Feature and Scenario names", async () => {
     const result = await lintText(`Feature: Checkout flow
   Scenario: place an order
