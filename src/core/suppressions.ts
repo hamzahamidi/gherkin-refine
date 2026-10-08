@@ -95,9 +95,12 @@ function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic):
     }
   }
   const activeRuleDirectives = disabledRules.get(diagnostic.ruleId);
-  const suppressed = oneShot || (disableAll.size > 0 && !enabledRules.has(diagnostic.ruleId)) || Boolean(activeRuleDirectives?.size);
+  const suppressedByBlanket = disableAll.size > 0 && !enabledRules.has(diagnostic.ruleId);
+  const suppressed = oneShot || suppressedByBlanket || Boolean(activeRuleDirectives?.size);
   if (suppressed) {
-    for (const directive of disableAll) directive.used = true;
+    if (suppressedByBlanket) {
+      for (const directive of disableAll) directive.used = true;
+    }
     for (const directive of activeRuleDirectives ?? []) directive.used = true;
   }
   return suppressed;
