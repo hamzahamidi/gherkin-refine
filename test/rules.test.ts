@@ -165,6 +165,40 @@ Feature: Tags
     ].join(newline));
     expect(docStringContents(output ?? "")).toEqual(originalContents);
   });
+
+  it.each(['"""', "```"])("resumes whitespace checks after a %s closing delimiter", async (delimiter) => {
+    const source = [
+      "Feature: F",
+      "  Scenario: S",
+      "    Given a document",
+      `      ${delimiter}`,
+      "      payload",
+      `      ${delimiter}suffix`,
+      "    When another step  ",
+      "",
+      "",
+      "    Then the result is visible",
+      ""
+    ].join("\n");
+
+    const result = await lintText(source, {
+      config: { extends: [], rules: { "no-trailing-whitespace": "error", "no-extra-blank-lines": "error" } },
+      fix: true
+    });
+
+    expect(result.results[0]?.output).toBe([
+      "Feature: F",
+      "  Scenario: S",
+      "    Given a document",
+      `      ${delimiter}`,
+      "      payload",
+      `      ${delimiter}suffix`,
+      "    When another step",
+      "",
+      "    Then the result is visible",
+      ""
+    ].join("\n"));
+  });
 });
 
 describe("project rule behavior", () => {

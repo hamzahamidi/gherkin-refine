@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 (2026-10-08)
+
+Keeps whitespace checks active after Doc Strings with delimiter suffixes.
+
 ## 1.0.3 (2026-10-08)
 
 Updates package links to the renamed GitHub repository and documents a GitHub Actions quickstart.

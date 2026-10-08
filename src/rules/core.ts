@@ -101,7 +101,7 @@ function docStringContentLines(document: LintDocument): ReadonlySet<number> {
     if (!docString) return;
     const openingLine = docString.location.line;
     let closingLine = openingLine + 1;
-    while (closingLine <= document.lines.length && document.lines[closingLine - 1]?.trim() !== docString.delimiter) {
+    while (closingLine <= document.lines.length && !document.lines[closingLine - 1]?.trimStart().startsWith(docString.delimiter)) {
       closingLine += 1;
     }
     for (let line = openingLine + 1; line < closingLine; line += 1) contentLines.add(line);
