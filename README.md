@@ -11,6 +11,10 @@ Gherkin Refine is a TypeScript Gherkin linter for Node.js projects. It uses the 
 
 It targets Node.js 22.18 or later. The runtime is ESM and parses Feature, Rule, Scenario, Background, Examples, localized keywords, data tables, and doc strings through `@cucumber/gherkin`.
 
+## Documentation
+
+Start with the [documentation index](docs/index.md), or jump to [configuration](docs/configuration.md), [rules](docs/rules.md), [plugins](docs/plugins.md), [migration](docs/migration.md), or [AI agent integration](docs/agent-integration.md).
+
 ## Install
 
 ```sh
@@ -61,9 +65,11 @@ gherkin-refine features/
 
 Recommended rules check duplicate tags, duplicate Feature and Scenario names, and unused or undeclared Scenario Outline variables. Subjective style rules are off by default.
 
+See the [rules reference](docs/rules.md) for the full catalog and defaults.
+
 ## Safe fix preview
 
-Formatting rules are opt in. Enable `no-extra-blank-lines` in `gherkin-refine.config.json`:
+Whitespace cleanup rules are opt in. Enable `no-extra-blank-lines` in `gherkin-refine.config.json`. Use `--fix-dry-run` to preview a fix and `--fix` to apply it:
 
 ```json
 {
@@ -127,6 +133,8 @@ export default defineConfig({
 Existing `gherkinlint.config.*` files are still discovered.
 
 Severity accepts `off`, `warn`, `error`, `0`, `1`, or `2`. Options are checked before linting begins. TypeScript configuration uses Node's built in type stripping. It must use erasable TypeScript syntax and cannot rely on `tsconfig` path aliases or compiler transforms. Configuration and plugin files execute as trusted project code.
+
+See the [configuration guide](docs/configuration.md) for configuration details and the [plugin guide](docs/plugins.md) for custom rules.
 
 ## CLI
 
