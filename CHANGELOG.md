@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 (2026-10-08)
+
+Uses package metadata as the source of truth for CLI version output.
+
 ## 1.0.1 (2026-10-08)
 
 Adds package discovery keywords, npm funding metadata, and CI coverage reporting.

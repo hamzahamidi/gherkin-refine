@@ -36,6 +36,8 @@ try {
   assert.equal(typeof packInfo?.filename, "string", "npm pack must report the generated tarball");
   const tarball = join(temporary, packInfo.filename);
   npm(["install", "--prefix", fixture, "--no-save", "--ignore-scripts", "--no-audit", "--no-fund", tarball], root);
+  const packageRoot = join(fixture, "node_modules", "gherkin-refine");
+  const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
 
   const feature = "Feature: Installed package\n  @smoke @smoke\n  Scenario: consumer import\n";
   const featurePath = join(fixture, "features", "smoke.feature");
@@ -51,6 +53,16 @@ try {
   assert.equal(cli.stderr, "");
   assert.equal(JSON.parse(cli.stdout).results[0].diagnostics[0].ruleId, "no-duplicate-tags");
   const legacyCliPath = join(fixture, "node_modules", ".bin", process.platform === "win32" ? "gherkinlint.cmd" : "gherkinlint");
+  for (const executable of [cliPath, legacyCliPath]) {
+    const version = spawnSync(executable, ["--version"], {
+      cwd: fixture,
+      encoding: "utf8",
+      shell: process.platform === "win32"
+    });
+    assert.equal(version.status, 0, `Version command returned ${version.status}; stderr: ${version.stderr}`);
+    assert.equal(version.stderr, "");
+    assert.equal(version.stdout.trim(), manifest.version);
+  }
   const legacyCli = spawnSync(legacyCliPath, ["features/smoke.feature", "--format", "json"], {
     cwd: fixture,
     encoding: "utf8",
@@ -66,14 +78,12 @@ assert.equal(result.summary.errors, 1);
 assert.equal(result.tool.name, "gherkin-refine");
 `);
   run(process.execPath, [apiScript], fixture);
-  const packageRoot = join(fixture, "node_modules", "gherkin-refine");
   await access(join(packageRoot, "dist", "index.d.ts"));
   await access(join(fixture, "node_modules", ".bin", process.platform === "win32" ? "gherkinlint.cmd" : "gherkinlint"));
   const packagedFiles = packInfo.files.map((item) => item.path);
   assert(packagedFiles.includes("dist/index.js"));
   assert(packagedFiles.includes("dist/index.d.ts"));
   assert(!packagedFiles.some((path) => path.startsWith("src/")));
-  const manifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
   assert.equal(manifest.type, "module");
   assert.equal(manifest.bin["gherkin-refine"], "./dist/cli.js");
   assert.equal(manifest.bin.gherkinlint, "./dist/cli.js");
