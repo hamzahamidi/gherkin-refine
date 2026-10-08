@@ -23,6 +23,33 @@ To use `gherkinlint` as the package import name in a project, install a local np
 
 The CLI discovers `*.feature` files and ignores `.git`, `node_modules`, `dist`, and `coverage` while scanning directories. A directly named file is always linted. An explicitly named symlink to a file or directory is followed. Nested symlinked directories are not traversed.
 
+## GitHub Actions
+
+After installing `gherkin-refine` as a development dependency, add this workflow to lint feature files on pushes and pull requests:
+
+```yaml
+name: Gherkin
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - run: npx gherkin-refine .
+```
+
 ## Zero configuration
 
 The recommended rules run without a configuration file:
