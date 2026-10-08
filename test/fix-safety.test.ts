@@ -30,11 +30,15 @@ async function createPlugin(cwd: string): Promise<void> {
     },
     "valid-first-pass": {
       meta: { description: "Valid first pass", category: "formatting", recommended: false, fixable: true },
-      run({ document, report }) { if (document.source.includes("Feature: Valid")) report({ message: "Rename feature", start: { line: 1, column: 10 }, fix: { range: [9, 14], text: "Clean" } }); }
+      run({ document, report }) { if (document.source.includes("Feature: Break")) report({ message: "Rename feature", start: { line: 1, column: 10 }, fix: { range: [9, 14], text: "Clean" } }); }
     },
     "invalid-after-first-pass": {
       meta: { description: "Invalid later pass", category: "formatting", recommended: false, fixable: true },
       run({ document, report }) { if (document.source.includes("Feature: Clean")) report({ message: "Break feature", start: { line: 1, column: 1 }, fix: { range: [0, 7], text: "Scenario" } }); }
+    },
+    "valid-a-fix": {
+      meta: { description: "Valid fix in earlier file", category: "formatting", recommended: false, fixable: true },
+      run({ document, report }) { if (document.source.includes("Feature: Good")) report({ message: "Rename earlier feature", start: { line: 1, column: 10 }, fix: { range: [9, 13], text: "Done" } }); }
     }
   } };`);
 }
@@ -63,8 +67,8 @@ describe("autofix safety", () => {
     await createPlugin(cwd);
     const firstPath = join(cwd, "a.feature");
     const secondPath = join(cwd, "b.feature");
-    const firstSource = "Feature: Valid\n  Scenario: Existing\n";
-    const secondSource = "Feature: Other\n  Scenario: Unchanged\n";
+    const firstSource = "Feature: Good\n  Scenario: First\n";
+    const secondSource = "Feature: Break\n  Scenario: Second\n";
     await writeFile(firstPath, firstSource);
     await writeFile(secondPath, secondSource);
 
@@ -75,7 +79,11 @@ describe("autofix safety", () => {
       config: {
         extends: [],
         plugins: ["gherkinlint-plugin-fix-check"],
-        rules: { "fix-check/valid-first-pass": "error", "fix-check/invalid-after-first-pass": "error" }
+        rules: {
+          "fix-check/valid-a-fix": "error",
+          "fix-check/valid-first-pass": "error",
+          "fix-check/invalid-after-first-pass": "error"
+        }
       }
     })).rejects.toThrow("Autofix produced invalid Gherkin");
 
