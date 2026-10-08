@@ -202,6 +202,45 @@ describe("lintText", () => {
     expect(result.results[0]?.diagnostics[0]?.start.line).toBe(8);
   });
 
+  it("limits disable-file directives to the listed rules", async () => {
+    const source = `# gherkin-refine-disable-file name-length -- long names are allowed
+Feature: F
+  @duplicate @duplicate
+  Scenario: a deliberately long scenario name
+    Given a value
+`;
+    const result = await lintText(source, {
+      reportUnusedDisableDirectives: true,
+      config: {
+        extends: [],
+        rules: {
+          "no-duplicate-tags": "error",
+          "name-length": ["error", { max: 8 }]
+        }
+      }
+    });
+
+    expect(result.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual(["no-duplicate-tags"]);
+  });
+
+  it("reports a disable directive that was enabled before a matching finding", async () => {
+    const source = `# gherkin-refine-disable name-length
+# gherkin-refine-enable name-length
+Feature: F
+  Scenario: a deliberately long scenario name
+    Given a value
+`;
+    const result = await lintText(source, {
+      reportUnusedDisableDirectives: true,
+      config: { extends: [], rules: { "name-length": ["error", { max: 8 }] } }
+    });
+
+    expect(result.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual([
+      "unused-disable-directive",
+      "name-length"
+    ]);
+  });
+
   it("awaits asynchronous plugin rules and reports rejected rules as execution errors", async () => {
     const cwd = await tempDirectory();
     const pluginDirectory = join(cwd, "node_modules", "gherkinlint-plugin-demo");

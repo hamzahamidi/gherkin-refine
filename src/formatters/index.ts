@@ -59,10 +59,9 @@ function formatNdjson(result: LintResult): string {
 function formatStylish(result: LintResult, quiet: boolean): string {
   const lines: string[] = [];
   for (const file of result.results) {
-    const diagnostics = quiet ? file.diagnostics.filter((item) => item.severity === "error") : file.diagnostics;
-    if (diagnostics.length === 0) continue;
+    if (file.diagnostics.length === 0) continue;
     lines.push(file.filePath);
-    for (const diagnostic of diagnostics) {
+    for (const diagnostic of file.diagnostics) {
       const severity = diagnostic.severity === "error" ? "error" : "warning";
       lines.push(`  ${diagnostic.start.line}:${diagnostic.start.column}  ${severity}  ${diagnostic.message}  ${diagnostic.ruleId}`);
     }
@@ -79,7 +78,6 @@ function formatStylish(result: LintResult, quiet: boolean): string {
 function formatCompact(result: LintResult, quiet: boolean): string {
   const lines: string[] = [];
   for (const diagnostic of result.results.flatMap((file) => file.diagnostics)) {
-    if (quiet && diagnostic.severity !== "error") continue;
     lines.push(`${diagnostic.filePath}:${diagnostic.start.line}:${diagnostic.start.column}: ${diagnostic.severity}: ${diagnostic.message} (${diagnostic.ruleId})`);
   }
   if (result.summary.truncated) lines.push("results truncated");

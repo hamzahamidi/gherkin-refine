@@ -1,7 +1,7 @@
 import { StepKeywordType } from "@cucumber/messages";
 import type { LintDocument, ProjectRuleModule, RuleFix, RuleModule } from "../types.js";
 import type { Scenario, Tag } from "@cucumber/messages";
-import { forEachScenario } from "../parser/document.js";
+import { forEachScenario, forEachStep } from "../parser/document.js";
 
 const nameLengthOptions = (value: unknown): value is { max: number } =>
   isRecord(value) && Number.isInteger(value.max) && Number(value.max) > 0;
@@ -92,6 +92,21 @@ function tagGroups(document: LintDocument): readonly Readonly<{ tags: readonly T
     }
   }
   return groups;
+}
+
+function docStringContentLines(document: LintDocument): ReadonlySet<number> {
+  const contentLines = new Set<number>();
+  forEachStep(document, (step) => {
+    const docString = step.docString;
+    if (!docString) return;
+    const openingLine = docString.location.line;
+    let closingLine = openingLine + 1;
+    while (closingLine <= document.lines.length && document.lines[closingLine - 1]?.trim() !== docString.delimiter) {
+      closingLine += 1;
+    }
+    for (let line = openingLine + 1; line < closingLine; line += 1) contentLines.add(line);
+  });
+  return contentLines;
 }
 
 export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
@@ -350,7 +365,9 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       documentation: "docs/rules.md#no-trailing-whitespace"
     },
     run({ document, report }) {
+      const protectedLines = docStringContentLines(document);
       for (let index = 0; index < document.lines.length; index += 1) {
+        if (protectedLines.has(index + 1)) continue;
         const line = document.lines[index] ?? "";
         const match = line.match(/[\t ]+$/);
         if (!match || match.index === undefined) continue;
@@ -375,8 +392,10 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, report }) {
       let blankCount = 0;
       const hasFinalNewline = /(?:\r\n|\n|\r)$/.test(document.source);
+      const protectedLines = docStringContentLines(document);
       for (let index = 0; index < document.lines.length; index += 1) {
         const line = document.lines[index] ?? "";
+        if (protectedLines.has(index + 1)) continue;
         if (hasFinalNewline && index === document.lines.length - 1) continue;
         if (line.trim().length > 0) {
           blankCount = 0;

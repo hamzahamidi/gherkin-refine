@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { LintConfig, RuleSetting, SeverityInput } from "../types.js";
 import { ConfigError } from "../config/index.js";
@@ -27,7 +27,6 @@ export async function migrateLegacyFile(
     const outputPath = resolve(options.outputPath ?? "gherkin-refine.config.json");
     if (!options.force) {
       try {
-        const { access } = await import("node:fs/promises");
         await access(outputPath);
         throw new ConfigError(`Output already exists: ${outputPath}. Use --force to replace it.`);
       } catch (error) {

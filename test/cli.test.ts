@@ -40,6 +40,16 @@ describe("CLI", () => {
     expect(JSON.parse(listed.stdout).rules.some((rule: { id: string }) => rule.id === "no-duplicate-tags")).toBe(true);
   });
 
+  it("uses exit code 2 for invalid arguments and 0 for help", () => {
+    const invalid = spawnSync(process.execPath, [cliPath, "--bogus"], { encoding: "utf8" });
+    expect(invalid.status).toBe(2);
+    expect(invalid.stderr).toContain("unknown option");
+
+    const help = spawnSync(process.execPath, [cliPath, "--help"], { encoding: "utf8" });
+    expect(help.status).toBe(0);
+    expect(help.stdout).toContain("Usage:");
+  });
+
   it("fails warning-only output when the max warning threshold is exceeded", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gherkinlint-warning-"));
     directories.push(directory);
