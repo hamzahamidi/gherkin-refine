@@ -37,7 +37,7 @@ export async function lintText(source: string, options: LintOptions = {}): Promi
   const requestedPath = options.filePath ?? "stdin.feature";
   const absolutePath = requestedPath.startsWith("<") ? resolve(cwd, "__stdin__.feature") : resolve(cwd, requestedPath);
   const displayPath = requestedPath.startsWith("<") ? requestedPath : displayFilePath(absolutePath, cwd, options.absolutePaths ?? false);
-  const loaded = await loadRequestedConfig(cwd, options.config, options.configPath);
+  const loaded = await loadRequestedConfig(cwd, options);
   validateConfiguration(loaded, [displayPath], cwd);
   throwIfAborted(options.signal);
   const file: SourceFile = { absolutePath, displayPath, source };
@@ -49,7 +49,7 @@ export async function lintFiles(paths: readonly string[], options: LintOptions &
   const cwd = resolve(options.cwd ?? process.cwd());
   validateExecutionOptions(options);
   throwIfAborted(options.signal);
-  const loaded = await loadRequestedConfig(cwd, options.config, options.configPath);
+  const loaded = await loadRequestedConfig(cwd, options);
   validateConfiguration(loaded, [], cwd);
   const found = await discoverFiles(paths.length > 0 ? paths : ["."], cwd);
   throwIfAborted(options.signal);
@@ -82,8 +82,9 @@ export async function lintFiles(paths: readonly string[], options: LintOptions &
   return buildResult(processed, options);
 }
 
-async function loadRequestedConfig(cwd: string, config: LintOptions["config"], configPath?: string): Promise<LoadedConfig> {
-  return config ? loadConfigObject(cwd, config) : loadConfig(cwd, configPath);
+async function loadRequestedConfig(cwd: string, options: LintOptions): Promise<LoadedConfig> {
+  const loadOptions = options.ignorePatterns ? { ignorePatterns: options.ignorePatterns } : {};
+  return options.config ? loadConfigObject(cwd, options.config, cwd, loadOptions) : loadConfig(cwd, options.configPath, loadOptions);
 }
 
 async function processFiles(

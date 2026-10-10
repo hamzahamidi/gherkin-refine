@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -38,6 +38,25 @@ describe("CLI", () => {
     expect(invalid.stderr).toContain("Unknown rule");
     const listed = spawnSync(process.execPath, [cliPath, "--list-rules", "--format", "json"], { encoding: "utf8" });
     expect(JSON.parse(listed.stdout).rules.some((rule: { id: string }) => rule.id === "no-duplicate-tags")).toBe(true);
+  });
+
+  it("accepts gherkin-lint flags and warns about legacy rules it cannot check", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "gherkinlint-legacy-"));
+    directories.push(directory);
+    await mkdir(join(directory, "features"));
+    await writeFile(join(directory, ".gherkin-lintrc"), JSON.stringify({ "no-trailing-spaces": "on", "indentation": "on" }));
+    await writeFile(join(directory, "features", "a.feature"), "Feature: A \n");
+    await writeFile(join(directory, "features", "b.feature"), "Feature: B\n");
+
+    const run = spawnSync(process.execPath, [cliPath, "-f", "json", "-i", "features/a.feature", "--rulesdir", "features", "-r", "/missing"], { cwd: directory, encoding: "utf8" });
+    expect(run.status).toBe(0);
+    expect(run.stderr).toBe('warning: .gherkin-lintrc rules not fully checked: indentation. Run "gherkin-refine migrate --dry-run" for details.\n');
+    expect(JSON.parse(run.stdout).results.map((item: { filePath: string }) => item.filePath)).toEqual(["features/b.feature"]);
+
+    await writeFile(join(directory, "features", "custom-rule.js"), "module.exports = {};\n");
+    const custom = spawnSync(process.execPath, [cliPath, "--rulesdir", "features"], { cwd: directory, encoding: "utf8" });
+    expect(custom.status).toBe(2);
+    expect(custom.stderr).toContain("Custom gherkin-lint rules in features are not supported.");
   });
 
   it("uses exit code 2 for invalid arguments and 0 for help", () => {

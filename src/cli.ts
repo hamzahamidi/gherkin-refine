@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command, CommanderError, InvalidArgumentError } from "commander";
+import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { effectiveConfig, loadConfig } from "./config/index.js";
 import { migrateLegacyFile } from "./compat/migrate.js";
@@ -18,7 +19,7 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
     .version(VERSION)
     .argument("[paths...]", "Feature files, directories, or glob patterns")
     .option("-c, --config <path>", "Configuration file path")
-    .option("--format <format>", "Output format", "stylish")
+    .option("-f, --format <format>", "Output format", "stylish")
     .option("--fix", "Apply safe autofixes")
     .option("--fix-dry-run", "Report safe autofixes without writing files")
     .option("--stdin", "Read Gherkin source from stdin")
@@ -33,6 +34,8 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
     .option("--explain <rule-id>", "Explain a rule and its effective configuration")
     .option("--print-config <path>", "Print effective configuration for a file")
     .option("--debug", "Print stack traces for execution errors")
+    .option("-i, --ignore <patterns>", "Comma-separated ignore patterns that replace .gherkin-lintignore", parseList)
+    .option("-r, --rulesdir <directory>", "gherkin-lint compatibility: fails if the directory holds custom rules", collect, [])
     .exitOverride()
     .configureOutput({
       writeOut: (text) => process.stdout.write(text),
@@ -83,7 +86,9 @@ async function executeLint(paths: readonly string[], rawOptions: Record<string, 
   if (rawOptions.fix && rawOptions.fixDryRun) throw new Error("Choose either --fix or --fix-dry-run, not both.");
   const cwd = process.cwd();
   const configPath = typeof rawOptions.config === "string" ? rawOptions.config : undefined;
-  const loaded = await loadConfig(cwd, configPath);
+  await rejectLegacyRuleDirectories(cwd, rawOptions.rulesdir as readonly string[]);
+  const ignorePatterns = Array.isArray(rawOptions.ignore) ? rawOptions.ignore as readonly string[] : undefined;
+  const loaded = await loadConfig(cwd, configPath, ignorePatterns ? { ignorePatterns } : {});
 
   if (rawOptions.listRules) {
     printRuleList(loaded, format, cwd);
@@ -115,8 +120,12 @@ async function executeLint(paths: readonly string[], rawOptions: Record<string, 
     ...(rawOptions.absolutePaths === true ? { absolutePaths: true } : {}),
     ...(rawOptions.fix === true ? { fix: true } : {}),
     ...(rawOptions.fixDryRun === true ? { fixDryRun: true } : {}),
-    ...(rawOptions.reportUnusedDisableDirectives === true ? { reportUnusedDisableDirectives: true } : {})
+    ...(rawOptions.reportUnusedDisableDirectives === true ? { reportUnusedDisableDirectives: true } : {}),
+    ...(ignorePatterns ? { ignorePatterns } : {})
   };
+  if (loaded.legacyUnsupported) {
+    process.stderr.write(`warning: .gherkin-lintrc rules not fully checked: ${loaded.legacyUnsupported.join(", ")}. Run "gherkin-refine migrate --dry-run" for details.\n`);
+  }
 
   let result;
   if (rawOptions.stdin === true) {
@@ -202,3 +211,25 @@ function compareText(left: string, right: string): number {
 }
 
 void runCli();
+
+function parseList(value: string): readonly string[] {
+  return value.split(",").map((item) => item.trim()).filter((item) => item !== "");
+}
+
+function collect(value: string, previous: readonly string[]): readonly string[] {
+  return [...previous, value];
+}
+
+async function rejectLegacyRuleDirectories(cwd: string, directories: readonly string[]): Promise<void> {
+  for (const directory of directories) {
+    let entries: string[];
+    try {
+      entries = await readdir(resolve(cwd, directory));
+    } catch {
+      continue;
+    }
+    if (entries.some((entry) => entry.endsWith(".js"))) {
+      throw new Error(`Custom gherkin-lint rules in ${directory} are not supported. Port them to a gherkin-refine plugin.`);
+    }
+  }
+}
