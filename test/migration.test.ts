@@ -101,6 +101,9 @@ describe("migrateLegacyConfig", () => {
     const ruleOnly = migrateLegacyConfig({ "scenario-size": ["on", { "steps-length": { Rule: 4 } }] });
     expect(ruleOnly.config.rules).toEqual({});
     expect(ruleOnly.unsupported).toEqual(["scenario-size: no Scenario or Background limit was present."]);
+    const disabledRuleOnly = migrateLegacyConfig({ "scenario-size": ["off", { "steps-length": { Rule: 4 } }] });
+    expect(disabledRuleOnly.config.rules).toEqual({});
+    expect(disabledRuleOnly.unsupported).toEqual([]);
   });
 
   it("writes disabled rules without options and does not report disabled rules as unsupported", () => {

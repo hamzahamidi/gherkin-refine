@@ -149,6 +149,9 @@ Feature: Tags
 Feature: Tags
   @wip
   Rule: Payments
+    Background:
+      Given a wallet
+
     @Smoke @team-wip
     Scenario Outline: pay
       Given a value <item>
@@ -161,16 +164,16 @@ Feature: Tags
     const allowed = await lintText(source, { config: { extends: [], rules: { "allowed-tags": ["error", { tags: ["@smoke"], patterns: ["^@jira-\\d+$"] }] } } });
     expect(allowed.results[0]?.diagnostics.map((item) => [item.message, item.start.line, item.start.column])).toEqual([
       ["Tag @wip is not allowed.", 3, 3],
-      ["Tag @Smoke is not allowed.", 5, 5],
-      ["Tag @team-wip is not allowed.", 5, 12]
+      ["Tag @Smoke is not allowed.", 8, 5],
+      ["Tag @team-wip is not allowed.", 8, 12]
     ]);
 
     const restricted = await lintText(source, { config: { extends: [], rules: { "no-restricted-tags": ["error", { tags: ["@smoke"], patterns: ["wip"] }] } } });
     expect(restricted.results[0]?.diagnostics.map((item) => [item.message, item.start.line])).toEqual([
       ["Tag @smoke is restricted.", 1],
       ["Tag @wip is restricted.", 3],
-      ["Tag @team-wip is restricted.", 5],
-      ["Tag @smoke is restricted.", 9]
+      ["Tag @team-wip is restricted.", 8],
+      ["Tag @smoke is restricted.", 12]
     ]);
 
     const defaults = await lintText(source, { config: { extends: [], rules: { "allowed-tags": "error", "no-restricted-tags": "error" } } });
