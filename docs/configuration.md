@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration files are `gherkin-refine.config.js`, `gherkin-refine.config.mjs`, `gherkin-refine.config.ts`, and `gherkin-refine.config.json`. The first matching file is searched from the working directory upward. Existing `gherkinlint.config.*` files are still discovered. Use `--config` to select a specific file.
+Configuration files are `gherkin-refine.config.js`, `gherkin-refine.config.mjs`, `gherkin-refine.config.ts`, and `gherkin-refine.config.json`. The first matching file is searched from the working directory upward. Existing `gherkinlint.config.*` files are still discovered. Use `--config` to select a specific file. A `.gherkin-lintignore` file in the working directory adds its non-empty lines to `ignores`.
 
 The recommended preset is enabled when no `extends` field is provided. Set `extends: []` to disable preset rules. Rule severities are `off`, `warn`, and `error`, or their numeric forms `0`, `1`, and `2`. A rule can include options as `[severity, options]`.
 

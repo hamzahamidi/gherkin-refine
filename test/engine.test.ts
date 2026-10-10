@@ -334,7 +334,7 @@ Feature: F
     const result = migrateLegacyConfig({
       "no-duplicate-tags": "on",
       "no-unused-variables": "on",
-      "no-files-without-scenarios": "off"
+      "no-files-without-scenarios": "on"
     });
     expect(result.config.rules).toEqual({
       "no-duplicate-tags": "error",
@@ -384,6 +384,27 @@ describe("lintFiles", () => {
     const config = { extends: [] as const, ignores: ["ignored/**/*.feature"], rules: { "no-duplicate-tags": "error" as const } };
     expect((await lintFiles(["."], { cwd, config })).summary.files).toBe(0);
     expect((await lintFiles([file], { cwd, config })).summary.errors).toBe(1);
+  });
+
+  it("adds .gherkin-lintignore patterns from the working directory to the configured ignores", async () => {
+    const cwd = await tempDirectory();
+    await mkdir(join(cwd, "vendor"));
+    await mkdir(join(cwd, "generated"));
+    await writeFile(join(cwd, "vendor", "one.feature"), "Feature: Vendor\n");
+    await writeFile(join(cwd, "generated", "two.feature"), "Feature: Generated\n");
+    await writeFile(join(cwd, "kept.feature"), "Feature: Kept\n");
+    await writeFile(join(cwd, ".gherkin-lintignore"), "vendor/**\r\n\n");
+    const config = { extends: [] as const, ignores: ["generated/**"] };
+
+    const result = await lintFiles(["."], { cwd, config });
+
+    expect(result.results.map((item) => item.filePath)).toEqual(["kept.feature"]);
+  });
+
+  it("reports an unreadable .gherkin-lintignore as a configuration error", async () => {
+    const cwd = await tempDirectory();
+    await mkdir(join(cwd, ".gherkin-lintignore"));
+    await expect(lintFiles(["."], { cwd, config: { extends: [] } })).rejects.toBeInstanceOf(ConfigError);
   });
 
   it("reports unmatched explicit glob patterns", async () => {

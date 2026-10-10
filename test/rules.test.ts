@@ -32,7 +32,7 @@ describe("opt in rule behavior", () => {
     const result = await lintText(source, { config: { extends: [], rules: {
       "no-duplicate-tags": "error", "no-unused-outline-variables": "error", "no-undefined-outline-variables": "error",
       "scenario-size": "error", "background-size": "error", "feature-size": "error", "name-length": "error",
-      "tag-pattern": "error", "logical-keyword-order": "error", "no-trailing-whitespace": "error", "no-extra-blank-lines": "error"
+      "tag-pattern": "error", "allowed-tags": "error", "no-restricted-tags": "error", "logical-keyword-order": "error", "no-trailing-whitespace": "error", "no-extra-blank-lines": "error"
     } } });
     expect(result.results[0]?.diagnostics).toEqual([]);
   });
@@ -41,7 +41,9 @@ describe("opt in rule behavior", () => {
     ["name-length", false], ["name-length", { max: 0 }], ["name-length", { max: 1.5 }],
     ["scenario-size", []], ["scenario-size", { maxSteps: -1 }],
     ["feature-size", { maxScenarios: 0 }], ["feature-size", { maxScenarios: "2" }],
-    ["tag-pattern", {}], ["tag-pattern", { pattern: 2 }], ["tag-pattern", { pattern: "[" }]
+    ["tag-pattern", {}], ["tag-pattern", { pattern: 2 }], ["tag-pattern", { pattern: "[" }],
+    ["allowed-tags", []], ["allowed-tags", { tags: "@a" }], ["allowed-tags", { patterns: [2] }],
+    ["no-restricted-tags", { patterns: "@a" }], ["no-restricted-tags", { patterns: ["["] }]
   ])("rejects invalid options for %s: %j", async (rule, options) => {
     await expect(lintText("Feature: F\n", { config: { extends: [], rules: { [rule as string]: ["error", options] } } })).rejects.toThrow("Invalid options for rule");
   });
@@ -140,6 +142,39 @@ Feature: Tags
       "Tag @X does not match /^@[a-z]+$/."
     ]);
     expect(result.results[0]?.diagnostics.map((item) => item.start.line)).toEqual([1, 5, 9]);
+  });
+
+  it("checks allowed and restricted tags by exact name or unanchored pattern on every tagged node", async () => {
+    const source = `@smoke @jira-12
+Feature: Tags
+  @wip
+  Rule: Payments
+    @Smoke @team-wip
+    Scenario Outline: pay
+      Given a value <item>
+
+      @smoke
+      Examples:
+        | item |
+        | one  |
+`;
+    const allowed = await lintText(source, { config: { extends: [], rules: { "allowed-tags": ["error", { tags: ["@smoke"], patterns: ["^@jira-\\d+$"] }] } } });
+    expect(allowed.results[0]?.diagnostics.map((item) => [item.message, item.start.line, item.start.column])).toEqual([
+      ["Tag @wip is not allowed.", 3, 3],
+      ["Tag @Smoke is not allowed.", 5, 5],
+      ["Tag @team-wip is not allowed.", 5, 12]
+    ]);
+
+    const restricted = await lintText(source, { config: { extends: [], rules: { "no-restricted-tags": ["error", { tags: ["@smoke"], patterns: ["wip"] }] } } });
+    expect(restricted.results[0]?.diagnostics.map((item) => [item.message, item.start.line])).toEqual([
+      ["Tag @smoke is restricted.", 1],
+      ["Tag @wip is restricted.", 3],
+      ["Tag @team-wip is restricted.", 5],
+      ["Tag @smoke is restricted.", 9]
+    ]);
+
+    const defaults = await lintText(source, { config: { extends: [], rules: { "allowed-tags": "error", "no-restricted-tags": "error" } } });
+    expect(defaults.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual(Array(6).fill("allowed-tags"));
   });
 
   it("reports semantic keyword stages that move backward", async () => {

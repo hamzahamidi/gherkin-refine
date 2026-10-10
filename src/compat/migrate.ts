@@ -8,7 +8,11 @@ export interface MigrationResult {
   readonly content: string;
   readonly mapped: readonly string[];
   readonly unsupported: readonly string[];
+  readonly notes: readonly string[];
 }
+
+const legacyNameLimit = 70;
+const legacyStepsLimit = 15;
 
 export async function migrateLegacyFile(
   inputPath: string,
@@ -48,18 +52,30 @@ export function migrateLegacyConfig(legacy: Readonly<Record<string, unknown>>): 
       unsupported.push(`${oldId}: unsupported setting`);
       continue;
     }
-    const mapping = mapLegacyRule(oldId, parsed.options);
-    if (!mapping) {
-      unsupported.push(`${oldId}: no equivalent rule`);
+    const mappings = mapLegacyRule(oldId, parsed.options);
+    if (!mappings) {
+      if (parsed.severity !== "off") unsupported.push(`${oldId}: no equivalent rule`);
       continue;
     }
-    const [newId, options, note] = mapping;
-    rules[newId] = options === undefined ? parsed.severity : [parsed.severity, options];
-    mapped.push(`${oldId} -> ${newId}${note ? ` (${note})` : ""}`);
-    if (note?.startsWith("partial:")) unsupported.push(`${oldId}: ${note.slice("partial:".length).trim()}`);
+    if (mappings.length === 0) {
+      if (parsed.severity !== "off") unsupported.push(`${oldId}: no Scenario or Background limit was present.`);
+      continue;
+    }
+    if (parsed.severity === "off") {
+      for (const [newId] of mappings) rules[newId] = "off";
+      mapped.push(`${oldId} -> ${mappings.map(([newId]) => newId).join(", ")}`);
+      continue;
+    }
+    for (const [newId, ruleOptions, note] of mappings) {
+      rules[newId] = ruleOptions === undefined ? parsed.severity : [parsed.severity, ruleOptions];
+      const partial = note?.startsWith("partial:") ? note.slice("partial:".length).trim() : undefined;
+      mapped.push(`${oldId} -> ${newId}${partial ? " (partial)" : note ? ` (${note})` : ""}`);
+      if (partial) unsupported.push(`${oldId}: ${partial}`);
+    }
   }
-  const config: LintConfig = { rules };
-  return { config, content: `${JSON.stringify(config, null, 2)}\n`, mapped, unsupported };
+  const notes = ["extends: [] keeps gherkin-lint behavior, where only listed rules run. Remove it to add the recommended rules."];
+  const config: LintConfig = { extends: [], rules };
+  return { config, content: `${JSON.stringify(config, null, 2)}\n`, mapped, unsupported, notes };
 }
 
 function parseLegacySetting(value: unknown): { severity: SeverityInput; options?: unknown } | undefined {
@@ -75,7 +91,9 @@ function parseLegacySetting(value: unknown): { severity: SeverityInput; options?
   return undefined;
 }
 
-function mapLegacyRule(oldId: string, options: unknown): readonly [string, unknown?, string?] | undefined {
+type RuleMapping = readonly [string, unknown?, string?];
+
+function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] | undefined {
   const direct: Readonly<Record<string, string>> = {
     "no-duplicate-tags": "no-duplicate-tags",
     "no-dupe-feature-names": "no-duplicate-feature-names",
@@ -85,37 +103,50 @@ function mapLegacyRule(oldId: string, options: unknown): readonly [string, unkno
     "no-multiple-empty-lines": "no-extra-blank-lines",
     "keywords-in-logical-order": "logical-keyword-order",
     "scenario-size": "scenario-size",
-    "name-length": "name-length"
+    "name-length": "name-length",
+    "allowed-tags": "allowed-tags",
+    "no-restricted-tags": "no-restricted-tags"
   };
   const newId = direct[oldId];
   if (!newId) return undefined;
   if (oldId === "scenario-size") {
-    const value = isRecord(options) ? options : {};
-    const stepsLength = isRecord(value["steps-length"]) ? value["steps-length"] : value;
-    const scenarioLimit = stepsLength.Scenario ?? stepsLength.scenario ?? stepsLength.maxSteps;
-    if (Number.isInteger(scenarioLimit) && Number(scenarioLimit) > 0) {
-      const backgroundLimit = stepsLength.Background ?? stepsLength.background;
-      const note = Number.isInteger(backgroundLimit) ? "partial: Background limits need a separate rule." : undefined;
-      return note ? [newId, { maxSteps: Number(scenarioLimit) }, note] : [newId, { maxSteps: Number(scenarioLimit) }];
+    if (!isRecord(options) || Object.keys(options).length === 0) {
+      return [[newId, { maxSteps: legacyStepsLimit }], ["background-size", { maxSteps: legacyStepsLimit }]];
     }
-    return [newId, { maxSteps: 12 }, "partial: no Scenario limit was present, so the modern default is 12 steps."];
+    const stepsLength = isRecord(options["steps-length"]) ? options["steps-length"] : options;
+    const scenarioLimit = stepsLength.Scenario ?? stepsLength.scenario ?? stepsLength.maxSteps;
+    const backgroundLimit = stepsLength.Background ?? stepsLength.background;
+    const mappings: RuleMapping[] = [];
+    if (isPositiveInteger(scenarioLimit)) mappings.push([newId, { maxSteps: scenarioLimit }]);
+    if (isPositiveInteger(backgroundLimit)) mappings.push(["background-size", { maxSteps: backgroundLimit }]);
+    return mappings;
   }
   if (oldId === "name-length") {
-    if (!isRecord(options)) return [newId, { max: 70 }];
-    const feature = options.Feature ?? options.feature;
-    const scenario = options.Scenario ?? options.scenario;
-    if (Number.isInteger(feature) && Number.isInteger(scenario) && Number(feature) === Number(scenario)) {
-      const note = options.Step !== undefined ? "partial: Step-name limits do not have a modern equivalent." : undefined;
-      return note ? [newId, { max: Number(feature) }, note] : [newId, { max: Number(feature) }];
-    }
-    return [newId, { max: 70 }, "partial: different Feature and Scenario limits cannot be represented by one name-length option."];
+    const limits = isRecord(options) ? options : {};
+    const feature = limitOrDefault(limits.Feature ?? limits.feature);
+    const scenario = limitOrDefault(limits.Scenario ?? limits.scenario);
+    const stepNote = "Step text limits do not have a modern equivalent.";
+    if (feature === scenario) return [[newId, { max: feature }, `partial: ${stepNote}`]];
+    const [lowerName, lower, higher] = feature < scenario ? ["Feature", feature, scenario] : ["Scenario", scenario, feature];
+    return [[newId, { max: higher }, `partial: one limit covers Feature and Scenario names, so the ${lowerName} limit rises from ${lower} to ${higher}. ${stepNote}`]];
   }
   if (oldId === "no-dupe-scenario-names") {
     const scope = typeof options === "string" ? options : "anywhere";
-    return [newId, undefined, scope === "in-feature" ? "scope now includes the enclosing Rule" : "partial: modern scope is within each Feature or Rule, not across all files."];
+    return [[newId, undefined, scope === "in-feature" ? "scope now includes the enclosing Rule" : "partial: modern scope is within each Feature or Rule, not across all files."]];
   }
-  if (options !== undefined) return [newId, options];
-  return [newId];
+  if (oldId === "allowed-tags" || oldId === "no-restricted-tags") {
+    return [[newId, options, "scope now includes tags inside Rule blocks"]];
+  }
+  if (options !== undefined) return [[newId, options]];
+  return [[newId]];
+}
+
+function limitOrDefault(value: unknown): number {
+  return isPositiveInteger(value) ? value : legacyNameLimit;
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return Number.isInteger(value) && Number(value) > 0;
 }
 
 function stripJsonComments(source: string): string {
