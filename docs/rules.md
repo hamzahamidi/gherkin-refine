@@ -14,6 +14,8 @@ Recommended rules check correctness and use AST semantics. Size, naming, tag con
 | `feature-size` | off | `{ maxScenarios: 20 }` | Limits Scenarios in a Feature, including Scenarios under Rules |
 | `name-length` | off | `{ max: 80 }` | Limits Feature and Scenario names |
 | `tag-pattern` | off | `{ pattern: "^@[a-z0-9][a-z0-9_-]*$" }` | Requires tag names to match a regular expression |
+| `allowed-tags` | off | `{ tags: [], patterns: [] }` | Reports tags that are not listed in `tags` and match no regular expression in `patterns` |
+| `no-restricted-tags` | off | `{ tags: [], patterns: [] }` | Reports tags listed in `tags` or matching a regular expression in `patterns` |
 | `logical-keyword-order` | off | none | Keeps semantic Given, When, and Then stages in order |
 | `no-trailing-whitespace` | off | none | Reports and safely removes trailing spaces and tabs |
 | `no-extra-blank-lines` | off | none | Reports repeated empty lines and safely removes extras |
@@ -21,6 +23,6 @@ Recommended rules check correctness and use AST semantics. Size, naming, tag con
 
 `And`, `But`, and `*` do not start a new logical stage. The order rule uses the parser's semantic keyword types, so localized step keywords follow the same behavior. A `Rule` is a separate scope for duplicate Scenario names and Rule-level Backgrounds remain part of the parsed document.
 
-`scenario-size`, `background-size`, `feature-size`, `name-length`, `tag-pattern`, `logical-keyword-order`, and formatting rules are disabled by default because teams can reasonably choose different styles.
+`scenario-size`, `background-size`, `feature-size`, `name-length`, `tag-pattern`, `allowed-tags`, `no-restricted-tags`, `logical-keyword-order`, and formatting rules are disabled by default because teams can reasonably choose different styles.
 
 Use `gherkin-refine --list-rules --format json` for machine-readable metadata and `gherkin-refine --explain <rule-id>` for a local explanation.

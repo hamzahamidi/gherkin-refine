@@ -1,6 +1,6 @@
 import { StepKeywordType } from "@cucumber/messages";
 import type { LintDocument, ProjectRuleModule, RuleFix, RuleModule } from "../types.js";
-import type { Scenario, Tag } from "@cucumber/messages";
+import type { Feature, Scenario, Tag } from "@cucumber/messages";
 import { forEachScenario, forEachStep } from "../parser/document.js";
 
 const nameLengthOptions = (value: unknown): value is { max: number } =>
@@ -21,6 +21,44 @@ const tagPatternOptions = (value: unknown): value is { pattern: string } => {
     return false;
   }
 };
+
+const tagListOptions = (value: unknown): value is { tags?: string[]; patterns?: string[] } => {
+  if (!isRecord(value)) return false;
+  if (value.tags !== undefined && !isStringArray(value.tags)) return false;
+  if (value.patterns === undefined) return true;
+  if (!isStringArray(value.patterns)) return false;
+  try {
+    for (const pattern of value.patterns) new RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+function tagMatcher(options: unknown): (name: string) => boolean {
+  const { tags = [], patterns = [] } = options as { tags?: string[]; patterns?: string[] };
+  const expressions = patterns.map((pattern) => new RegExp(pattern));
+  return (name) => tags.includes(name) || expressions.some((expression) => expression.test(name));
+}
+
+function featureTags(feature: Feature): readonly Tag[] {
+  return [
+    ...feature.tags,
+    ...feature.children.flatMap((child) => [
+      ...(child.rule?.tags ?? []),
+      ...(child.scenario?.tags ?? []),
+      ...(child.scenario?.examples.flatMap((examples) => examples.tags) ?? []),
+      ...(child.rule?.children.flatMap((nested) => [
+        ...(nested.scenario?.tags ?? []),
+        ...(nested.scenario?.examples.flatMap((examples) => examples.tags) ?? [])
+      ]) ?? [])
+    ])
+  ];
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -309,23 +347,51 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       const pattern = new RegExp((options as { pattern: string }).pattern);
       const feature = document.feature;
       if (!feature) return;
-      const tags = [
-        ...feature.tags,
-        ...feature.children.flatMap((child) => [
-          ...(child.rule?.tags ?? []),
-          ...(child.scenario?.tags ?? []),
-          ...(child.scenario?.examples.flatMap((examples) => examples.tags) ?? []),
-          ...(child.rule?.children.flatMap((nested) => [
-            ...(nested.scenario?.tags ?? []),
-            ...(nested.scenario?.examples.flatMap((examples) => examples.tags) ?? [])
-          ]) ?? [])
-        ])
-      ];
-      for (const tag of tags) {
+      for (const tag of featureTags(feature)) {
         pattern.lastIndex = 0;
         if (pattern.test(tag.name)) continue;
         const column = tag.location.column ?? 1;
         report(rangeDiagnostic(document, tag.location.line, column, tag.name.length, "tag-pattern", `Tag ${tag.name} does not match ${pattern}.`));
+      }
+    }
+  },
+
+  "allowed-tags": {
+    meta: {
+      description: "Allow only listed tags and tags matching listed regular expressions.",
+      category: "tags",
+      recommended: false,
+      defaultOptions: { tags: [], patterns: [] },
+      examples: ["@unlisted"],
+      documentation: "docs/rules.md#allowed-tags"
+    },
+    validateOptions: tagListOptions,
+    run({ document, options, report }) {
+      if (!document.feature) return;
+      const allowed = tagMatcher(options);
+      for (const tag of featureTags(document.feature)) {
+        if (allowed(tag.name)) continue;
+        report(rangeDiagnostic(document, tag.location.line, tag.location.column ?? 1, tag.name.length, "allowed-tags", `Tag ${tag.name} is not allowed.`));
+      }
+    }
+  },
+
+  "no-restricted-tags": {
+    meta: {
+      description: "Disallow listed tags and tags matching listed regular expressions.",
+      category: "tags",
+      recommended: false,
+      defaultOptions: { tags: [], patterns: [] },
+      examples: ["@wip"],
+      documentation: "docs/rules.md#no-restricted-tags"
+    },
+    validateOptions: tagListOptions,
+    run({ document, options, report }) {
+      if (!document.feature) return;
+      const restricted = tagMatcher(options);
+      for (const tag of featureTags(document.feature)) {
+        if (!restricted(tag.name)) continue;
+        report(rangeDiagnostic(document, tag.location.line, tag.location.column ?? 1, tag.name.length, "no-restricted-tags", `Tag ${tag.name} is restricted.`));
       }
     }
   },

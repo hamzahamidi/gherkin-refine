@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 (2026-10-09)
+
+Adds the `allowed-tags` and `no-restricted-tags` rules and reads `.gherkin-lintignore` from the working directory. Brings `migrate` output closer to gherkin-lint results: the generated configuration disables the recommended preset, maps Background limits to `background-size`, and uses gherkin-lint defaults for size limits.
+
 ## 1.0.6 (2026-10-08)
 
 Allows selective suppression directives to reenable a rule after a blanket disable.

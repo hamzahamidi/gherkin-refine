@@ -197,7 +197,7 @@ The result schema is in [`schemas/result.schema.json`](schemas/result.schema.jso
 
 ## Migration
 
-`gherkin-refine migrate .gherkin-lintrc --dry-run` reads the historical JSON format, including comments. It writes `gherkin-refine.config.json` when run without `--dry-run`. It never replaces an existing output unless `--force` is supplied. The command reports unsupported rules and changed behavior. See [`docs/migration.md`](docs/migration.md).
+`gherkin-refine migrate .gherkin-lintrc --dry-run` reads the historical JSON format, including comments. It writes `gherkin-refine.config.json` when run without `--dry-run`. It never replaces an existing output unless `--force` is supplied. It keeps the recommended preset off, so only the legacy rules run. An existing `.gherkin-lintignore` keeps working. The command reports unsupported rules and changed behavior. See [`docs/migration.md`](docs/migration.md).
 
 ## Development
 

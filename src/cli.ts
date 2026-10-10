@@ -59,6 +59,7 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
       process.stdout.write(result.content);
       for (const item of result.mapped) process.stderr.write(`mapped: ${item}\n`);
       for (const item of result.unsupported) process.stderr.write(`unsupported: ${item}\n`);
+      for (const item of result.notes) process.stderr.write(`note: ${item}\n`);
       if (!options.dryRun) process.stderr.write(`Wrote ${resolve(options.output ?? "gherkin-refine.config.json")}\n`);
     });
 

@@ -94,8 +94,21 @@ export async function loadConfigObject(cwd: string, input: LintConfig, pluginRes
       presets.set(`${plugin.namespace}/${name}`, qualifyConfig(plugin.namespace, preset));
     }
   }
-  const config = mergePresets(input, presets);
+  const merged = mergePresets(input, presets);
+  const legacyIgnores = await readLegacyIgnoreFile(cwd);
+  const config = legacyIgnores.length > 0 ? { ...merged, ignores: [...(merged.ignores ?? []), ...legacyIgnores] } : merged;
   return { config, fileRules: fileRuleMap, projectRules: projectRuleMap, pluginNames };
+}
+
+// gherkin-lint reads this file from the working directory and treats each non-empty line as a glob.
+async function readLegacyIgnoreFile(cwd: string): Promise<readonly string[]> {
+  try {
+    const source = await readFile(resolve(cwd, ".gherkin-lintignore"), "utf8");
+    return source.split(/\r?\n|\r/).filter((line) => line !== "");
+  } catch (error) {
+    if (isRecord(error) && error.code === "ENOENT") return [];
+    throw new ConfigError(`Could not read ${resolve(cwd, ".gherkin-lintignore")}: ${messageOf(error)}`, { cause: error });
+  }
 }
 
 export function effectiveConfig(
