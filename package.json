@@ -1,7 +1,7 @@
 {
   "name": "gherkin-refine",
-  "version": "1.3.0",
-  "description": "A fast, deterministic Gherkin linter and safe fixer for Node.js, CI, and AI coding agents.",
+  "version": "1.3.1",
+  "description": "Gherkin and Cucumber linter with gherkin-lint compatibility: all 31 gherkin-lint rules, safe autofix, plugins, and SARIF output.",
   "type": "module",
   "bin": {
     "gherkin-refine": "./dist/cli.js",
@@ -42,8 +42,8 @@
     "compatibility:full": "npm run build && node scripts/compatibility.mjs --full",
     "compatibility:published": "node scripts/compatibility.mjs --full --published",
     "docs:rules": "npm run build && node scripts/generate-rule-docs.mjs",
-    "docs:dev": "npm run docs:rules && vitepress dev docs",
-    "docs:build": "npm run docs:rules && vitepress build docs",
+    "docs:dev": "npm run docs:rules && node scripts/generate-llms.mjs && vitepress dev docs",
+    "docs:build": "npm run docs:rules && node scripts/generate-llms.mjs && vitepress build docs",
     "docs:check": "node scripts/generate-rule-docs.mjs --check"
   },
   "keywords": [
@@ -51,13 +51,14 @@
     "gherkin-lint",
     "gherkin-linter",
     "gherkinlint",
+    "gherkin-validator",
     "cucumber",
+    "cucumber-js",
     "cucumber-lint",
-    "linter",
-    "autofix",
-    "gherkin-autofix",
     "bdd",
     "feature-files",
+    "linter",
+    "autofix",
     "typescript",
     "nodejs",
     "sarif",
@@ -69,7 +70,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/hamzahamidi/gherkin-refine.git"
+    "url": "git+https://github.com/hamzahamidi/gherkin-refine.git"
   },
   "homepage": "https://hamidihamza.com/gherkin-refine/",
   "funding": "https://github.com/sponsors/hamzahamidi",
@@ -89,6 +90,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "eslint": "^10.12.0",
+    "gherkin-lint": "4.2.4",
     "globals": "^17.13.0",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.56.0",

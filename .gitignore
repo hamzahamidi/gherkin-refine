@@ -6,3 +6,5 @@ coverage/
 compatibility-report.json
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+docs/public/llms.txt
+docs/public/llms-full.txt

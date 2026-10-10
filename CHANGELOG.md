@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 (2026-10-10)
+
+Points the package homepage to the documentation site, which now publishes `llms.txt` and `llms-full.txt`. Explains that TypeScript configuration needs Node.js 22.18 instead of failing with an import error. Adds a security policy, a contributing guide, and a CI test that compares every gherkin-lint rule against gherkin-lint 4.2.4.
+
 ## 1.3.0 (2026-10-10)
 
 Makes gherkin-refine a drop-in replacement for gherkin-lint: installs a `gherkin-lint` command, reads `.gherkin-lintrc` from the working directory, accepts `-f`, `-i` and `-r`, and warns once per run about legacy rules it cannot fully check.

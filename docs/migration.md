@@ -39,6 +39,8 @@ Three rules fix gherkin-lint bugs and can only report less than before: `no-homo
 
 `migrate --strict` fails without writing a file when any rule cannot be fully migrated.
 
+`test/gherkin-lint-parity.test.ts` runs gherkin-lint 4.2.4 and gherkin-refine on the same fixtures in CI, for every rule, and fails if their findings differ beyond the fixes listed above.
+
 This is a migration aid, not a compatibility mode. Review output because the former and current tools have different parser and scope behavior.
 
 ## CLI flags

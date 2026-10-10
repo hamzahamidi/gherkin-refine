@@ -1,1 +1,2 @@
 compatibility/fixtures/** -text
+test/fixtures/gherkin-lint-parity/** -text

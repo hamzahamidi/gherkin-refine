@@ -68,6 +68,9 @@ export async function loadConfig(cwd: string, explicitPath?: string, options: Lo
       } else if (extname(configPath) === ".json") {
         config = JSON.parse(await readFile(configPath, "utf8")) as LintConfig;
       } else {
+        if (/\.[cm]?ts$/.test(configPath) && !(process.features as { typescript?: unknown }).typescript) {
+          throw new Error(`TypeScript configuration needs Node.js 22.18 or later; this is Node.js ${process.versions.node}. Use a .js, .mjs, or .json configuration file.`);
+        }
         const loaded = await import(pathToFileURL(configPath).href);
         config = (loaded.default ?? loaded) as LintConfig;
       }

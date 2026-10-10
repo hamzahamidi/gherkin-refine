@@ -5,28 +5,41 @@
 [![npm version](https://img.shields.io/npm/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![Node.js](https://img.shields.io/node/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![License](https://img.shields.io/github/license/hamzahamidi/gherkin-refine.svg)](LICENSE)
-[![Sponsor](https://img.shields.io/badge/sponsor-GitHub-ff69b4.svg)](https://github.com/sponsors/hamzahamidi)
+[![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://hamidihamza.com/gherkin-refine/)
 
-Gherkin Refine is a TypeScript Gherkin linter for Node.js projects. It uses the official Cucumber parser and provides a CLI, a JavaScript API, plugin rules, inline suppression, safe autofixes, JSON, NDJSON, and SARIF output.
+A modern Gherkin and Cucumber linter, and a migration path from gherkin-lint.
 
-It targets Node.js 22.18 or later. The runtime is ESM and parses Feature, Rule, Scenario, Background, Examples, localized keywords, data tables, and doc strings through `@cucumber/gherkin`.
+Gherkin Refine supports all 31 rules of gherkin-lint 4.2.4, installs the same `gherkin-lint` command, and reads existing `.gherkin-lintrc` and `.gherkin-lintignore` files. It is built on the official Cucumber parser and adds safe autofixes, plugins, inline suppression, and JSON, NDJSON, and SARIF output.
 
-## Documentation
+## Migrating from gherkin-lint
 
-The documentation site is [hamidihamza.com/gherkin-refine](https://hamidihamza.com/gherkin-refine/), with one page per rule. In the repository, start with the [documentation index](docs/index.md), or jump to [configuration](docs/configuration.md), [rules](docs/rules.md), [plugins](docs/plugins.md), [migration](docs/migration.md), or [AI agent integration](docs/agent-integration.md). For a step by step introduction, see the [getting started tutorial](https://hamidihamza.com/notes/add-gherkin-linting-nodejs/).
+```sh
+npm uninstall gherkin-lint
+npm install --save-dev gherkin-refine
+```
 
-![Gherkin Refine previews whitespace findings, applies safe fixes, and checks the feature file again](https://hamidihamza.com/assets/gherkin-refine-fix-demo.gif)
+Scripts that call `gherkin-lint` keep working. The compatibility scope: every built-in gherkin-lint rule, its configuration and ignore files, and its CLI flags. It is not identical in every case: the parser is newer, a few gherkin-lint rule bugs are fixed, `xunit` output is not available, and custom `--rulesdir` rules need porting to a plugin. Read the [migration guide](https://hamidihamza.com/gherkin-refine/migration) before changing CI.
 
-## Install
+## Starting a new project
 
 ```sh
 npm install --save-dev gherkin-refine
 npx gherkin-refine .
 ```
 
-The `gherkinlint` command remains available as a compatibility alias.
+It targets Node.js 22.18 or later. The runtime is ESM and parses Feature, Rule, Scenario, Background, Examples, localized keywords, data tables, and doc strings through `@cucumber/gherkin`.
 
-Coming from gherkin-lint, replace the dependency and keep your scripts: the package also installs a `gherkin-lint` command and reads `.gherkin-lintrc` and `.gherkin-lintignore`. See [migration](docs/migration.md).
+[Documentation](https://hamidihamza.com/gherkin-refine/) · [Migration guide](https://hamidihamza.com/gherkin-refine/migration) · [Rules](https://hamidihamza.com/gherkin-refine/rules) · [Security policy](SECURITY.md)
+
+![Gherkin Refine previews whitespace findings, applies safe fixes, and checks the feature file again](https://hamidihamza.com/assets/gherkin-refine-fix-demo.gif)
+
+## Documentation
+
+The documentation site is [hamidihamza.com/gherkin-refine](https://hamidihamza.com/gherkin-refine/), with one page per rule. In the repository, start with the [documentation index](docs/index.md), or jump to [configuration](docs/configuration.md), [rules](docs/rules.md), [plugins](docs/plugins.md), [migration](docs/migration.md), or [AI agent integration](docs/agent-integration.md). For a step by step introduction, see the [getting started tutorial](https://hamidihamza.com/notes/add-gherkin-linting-nodejs/).
+
+## Install
+
+The `gherkinlint` command remains available as a compatibility alias.
 
 To use `gherkinlint` as the package import name in a project, install a local npm alias with `npm install --save-dev gherkinlint@npm:gherkin-refine`. This alias is specific to that project. The public package name remains `gherkin-refine`.
 
@@ -214,3 +227,15 @@ Coverage reports include lines, branches, functions, and statements for library 
 The package is MIT licensed. It has no telemetry and core rules make no network requests. See [`docs/architecture.md`](docs/architecture.md) and [`docs/rules.md`](docs/rules.md).
 
 See [`docs/performance.md`](docs/performance.md) for the benchmark method and one local measurement.
+
+## Maintenance and releases
+
+Gherkin Refine is an independently maintained, MIT licensed project. It is not affiliated with Cucumber or gherkin-lint.
+
+Every change runs unit, CLI, package smoke, and gherkin-lint comparison tests on Node.js 22.18, 24, and 26. Releases are published from GitHub Actions through npm trusted publishing with [provenance](https://www.npmjs.com/package/gherkin-refine), and every change is listed in [CHANGELOG.md](CHANGELOG.md). Fixes ship in the latest release only.
+
+Report bugs and request features in [GitHub Issues](https://github.com/hamzahamidi/gherkin-refine/issues), and ask questions in [GitHub Discussions](https://github.com/hamzahamidi/gherkin-refine/discussions). Report vulnerabilities privately, as described in the [security policy](SECURITY.md). See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a change.
+
+## Sponsor
+
+If Gherkin Refine saves your team time, you can [sponsor its maintenance on GitHub](https://github.com/sponsors/hamzahamidi).
