@@ -52,12 +52,14 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
     .option("--dry-run", "Print the generated configuration without writing a file")
     .option("--output <path>", "Output configuration path", "gherkin-refine.config.json")
     .option("--force", "Replace an existing output file")
+    .option("--strict", "Fail without writing when a legacy rule cannot be fully migrated")
     .action(async (configFile: string) => {
-      const options = migrateCommand.opts<{ dryRun?: boolean; output?: string; force?: boolean }>();
+      const options = migrateCommand.opts<{ dryRun?: boolean; output?: string; force?: boolean; strict?: boolean }>();
       const result = await migrateLegacyFile(resolve(configFile), {
         ...(options.dryRun !== undefined ? { dryRun: options.dryRun } : {}),
         ...(options.output ? { outputPath: options.output } : {}),
-        ...(options.force !== undefined ? { force: options.force } : {})
+        ...(options.force !== undefined ? { force: options.force } : {}),
+        ...(options.strict !== undefined ? { strict: options.strict } : {})
       });
       process.stdout.write(result.content);
       for (const item of result.mapped) process.stderr.write(`mapped: ${item}\n`);

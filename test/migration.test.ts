@@ -28,21 +28,19 @@ describe("migrateLegacyConfig", () => {
       .toBe(severity === "warn" || severity === "warning" || severity === 1 ? "warn" : "off");
   });
 
-  it("maps lowercase limits and keeps the higher of unequal name limits", () => {
+  it("maps lowercase limits and keeps every per-node name limit", () => {
     const result = migrateLegacyConfig({
       "scenario-size": ["on", { scenario: 6 }],
       "name-length": ["on", { feature: 30, scenario: 30 }]
     });
-    expect(result.config.rules).toEqual({ "scenario-size": ["error", { maxSteps: 6 }], "name-length": ["error", { max: 30 }] });
-    expect(result.unsupported).toEqual(["name-length: Step text limits do not have a modern equivalent."]);
+    expect(result.config.rules).toEqual({
+      "scenario-size": ["error", { maxSteps: 6 }],
+      "name-length": ["error", { Feature: 30, Rule: 70, Scenario: 30, Step: 70 }]
+    });
+    expect(result.unsupported).toEqual([]);
     const unequal = migrateLegacyConfig({ "name-length": ["on", { Feature: 50, Scenario: 85, Step: 115 }] });
-    expect(unequal.config.rules?.["name-length"]).toEqual(["error", { max: 85 }]);
-    expect(unequal.mapped).toEqual(["name-length -> name-length (partial)"]);
-    expect(unequal.unsupported).toEqual([
-      "name-length: one limit covers Feature and Scenario names, so the Feature limit rises from 50 to 85. Step text limits do not have a modern equivalent."
-    ]);
-    const scenarioOnly = migrateLegacyConfig({ "name-length": ["on", { Scenario: 40 }] });
-    expect(scenarioOnly.config.rules?.["name-length"]).toEqual(["error", { max: 70 }]);
+    expect(unequal.config.rules?.["name-length"]).toEqual(["error", { Feature: 50, Rule: 70, Scenario: 85, Step: 115 }]);
+    expect(unequal.mapped).toEqual(["name-length -> name-length"]);
   });
 
   it("maps direct rules and reports partial or unsupported legacy behavior", () => {
@@ -66,11 +64,10 @@ describe("migrateLegacyConfig", () => {
       "no-trailing-whitespace": "off",
       "scenario-size": ["error", { maxSteps: 8 }],
       "background-size": ["error", { maxSteps: 3 }],
-      "name-length": ["error", { max: 40 }]
+      "name-length": ["error", { Feature: 40, Rule: 70, Scenario: 40, Step: 25 }]
     });
     expect(result.mapped).toContain("no-dupe-scenario-names -> no-duplicate-scenario-names (scope now includes the enclosing Rule)");
     expect(result.mapped).toContain("scenario-size -> background-size");
-    expect(result.unsupported).toContain("name-length: Step text limits do not have a modern equivalent.");
     expect(result.unsupported).toContain("unknown-rule: no equivalent rule");
     expect(result.unsupported).toContain("invalid-severity: unsupported setting");
     expect(result.content).toBe(`${JSON.stringify(result.config, null, 2)}\n`);
@@ -86,13 +83,25 @@ describe("migrateLegacyConfig", () => {
     expect(result.config.rules).toEqual({
       "scenario-size": ["error", { maxSteps: 15 }],
       "background-size": ["error", { maxSteps: 15 }],
-      "name-length": ["error", { max: 70 }],
-      "no-duplicate-scenario-names": "error"
+      "name-length": ["error", { Feature: 70, Rule: 70, Scenario: 70, Step: 70 }],
+      "no-duplicate-scenario-names": ["error", { scope: "anywhere" }]
     });
-    expect(result.unsupported).toEqual([
-      "name-length: Step text limits do not have a modern equivalent.",
-      "no-dupe-scenario-names: modern scope is within each Feature or Rule, not across all files."
-    ]);
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it("maps renamed and merged gherkin-lint rules to their native rules", () => {
+    const result = migrateLegacyConfig({
+      "no-homogenous-tags": "on",
+      "max-scenarios-per-file": ["on", { maxScenarios: 5 }]
+    });
+    expect(result.config.rules).toEqual({
+      "no-homogeneous-tags": "error",
+      "feature-size": ["error", { maxScenarios: 5, countOutlineExamples: true }]
+    });
+    expect(migrateLegacyConfig({ "max-scenarios-per-file": "on" }).config.rules).toEqual({
+      "feature-size": ["error", { maxScenarios: 10, countOutlineExamples: true }]
+    });
+    expect(result.unsupported).toEqual([]);
   });
 
   it("maps only the step limits that are present", () => {
@@ -113,7 +122,7 @@ describe("migrateLegacyConfig", () => {
       "indentation": "off",
       "allowed-tags": ["off", { tags: ["@smoke"] }]
     });
-    expect(result.config.rules).toEqual({ "name-length": "off", "scenario-size": "off", "background-size": "off", "allowed-tags": "off" });
+    expect(result.config.rules).toEqual({ "name-length": "off", "scenario-size": "off", "background-size": "off", "indentation": "off", "allowed-tags": "off" });
     expect(result.unsupported).toEqual([]);
   });
 
@@ -185,6 +194,20 @@ describe("migrateLegacyFile", () => {
 
     const forced = await migrateLegacyFile(inputPath, { outputPath, force: true });
     expect(await readFile(outputPath, "utf8")).toBe(forced.content);
+  });
+
+  it("refuses to write a lossy migration in strict mode", async () => {
+    const directory = await tempDirectory();
+    const inputPath = join(directory, ".gherkin-lintrc");
+    const outputPath = join(directory, "gherkin-refine.config.json");
+    await writeFile(inputPath, JSON.stringify({ "no-duplicate-tags": "on", "custom-team-rule": "on" }));
+
+    await expect(migrateLegacyFile(inputPath, { outputPath, strict: true })).rejects.toThrow("Legacy rules cannot be fully migrated: custom-team-rule: no equivalent rule");
+    await expect(readFile(outputPath, "utf8")).rejects.toThrow();
+
+    await writeFile(inputPath, JSON.stringify({ "no-duplicate-tags": "on" }));
+    await migrateLegacyFile(inputPath, { outputPath, strict: true });
+    expect(await readFile(outputPath, "utf8")).toContain("no-duplicate-tags");
   });
 
   it("rejects malformed JSON and non object legacy files", async () => {

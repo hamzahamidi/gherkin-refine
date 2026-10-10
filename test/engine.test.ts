@@ -334,13 +334,13 @@ Feature: F
     const result = migrateLegacyConfig({
       "no-duplicate-tags": "on",
       "no-unused-variables": "on",
-      "no-files-without-scenarios": "on"
+      "custom-team-rule": "on"
     });
     expect(result.config.rules).toEqual({
       "no-duplicate-tags": "error",
       "no-unused-outline-variables": "error"
     });
-    expect(result.unsupported).toEqual(["no-files-without-scenarios: no equivalent rule"]);
+    expect(result.unsupported).toEqual(["custom-team-rule: no equivalent rule"]);
   });
 });
 
@@ -418,7 +418,7 @@ describe("lintFiles", () => {
     await writeFile(join(cwd, ".gherkin-lintrc"), `{
       // legacy comment
       "no-trailing-spaces": "on",
-      "indentation": "on"
+      "custom-team-rule": "on"
     }`);
     await writeFile(join(cwd, "one.feature"), "Feature: F \n  Scenario: S\n  Scenario: S\n");
 
@@ -446,11 +446,11 @@ describe("lintFiles", () => {
     const cwd = await tempDirectory();
     const configPath = join(cwd, "config", ".gherkin-lintrc");
     await mkdir(join(cwd, "config"));
-    await writeFile(configPath, JSON.stringify({ "indentation": "on", "use-and": "on", "name-length": "on", "no-duplicate-tags": "on" }));
+    await writeFile(configPath, JSON.stringify({ "custom-team-rule": "on", "another-custom-rule": "on", "name-length": "on", "no-duplicate-tags": "on" }));
 
     const loaded = await loadConfig(cwd, "config/.gherkin-lintrc");
 
-    expect(loaded.legacyUnsupported).toEqual(["indentation", "use-and", "name-length"]);
+    expect(loaded.legacyUnsupported).toEqual(["custom-team-rule", "another-custom-rule"]);
     expect(loaded.config.rules?.["no-duplicate-tags"]).toBe("error");
     expect((await loadConfig(cwd)).legacyUnsupported).toBeUndefined();
   });

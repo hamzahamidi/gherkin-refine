@@ -1,16 +1,28 @@
 import { StepKeywordType } from "@cucumber/messages";
 import type { LintDocument, ProjectRuleModule, RuleFix, RuleModule } from "../types.js";
-import type { Feature, Scenario, Tag } from "@cucumber/messages";
+import type { Scenario, Tag } from "@cucumber/messages";
 import { forEachScenario, forEachStep } from "../parser/document.js";
+import { featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic } from "./helpers.js";
+import { legacyRules } from "./legacy.js";
 
-const nameLengthOptions = (value: unknown): value is { max: number } =>
-  isRecord(value) && Number.isInteger(value.max) && Number(value.max) > 0;
+const NAME_LENGTH_KEYS = ["Feature", "Rule", "Scenario", "Step"] as const;
+
+const nameLengthOptions = (value: unknown): value is { max: number } | Partial<Record<(typeof NAME_LENGTH_KEYS)[number], number>> => {
+  if (!isRecord(value)) return false;
+  const isLimit = (limit: unknown) => Number.isInteger(limit) && Number(limit) > 0;
+  if ("max" in value) return Object.keys(value).length === 1 && isLimit(value.max);
+  return Object.entries(value).every(([key, limit]) => (NAME_LENGTH_KEYS as readonly string[]).includes(key) && isLimit(limit));
+};
+
+const duplicateScenarioOptions = (value: unknown): value is { scope?: "feature" | "anywhere" } =>
+  isRecord(value) && Object.keys(value).every((key) => key === "scope") && (value.scope === undefined || value.scope === "feature" || value.scope === "anywhere");
 
 const scenarioSizeOptions = (value: unknown): value is { maxSteps: number } =>
   isRecord(value) && Number.isInteger(value.maxSteps) && Number(value.maxSteps) > 0;
 
-const featureSizeOptions = (value: unknown): value is { maxScenarios: number } =>
-  isRecord(value) && Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) > 0;
+const featureSizeOptions = (value: unknown): value is { maxScenarios: number; countOutlineExamples?: boolean } =>
+  isRecord(value) && Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) > 0
+  && (value.countOutlineExamples === undefined || typeof value.countOutlineExamples === "boolean");
 
 const tagPatternOptions = (value: unknown): value is { pattern: string } => {
   if (!isRecord(value) || typeof value.pattern !== "string") return false;
@@ -39,62 +51,6 @@ function tagMatcher(options: unknown): (name: string) => boolean {
   const { tags = [], patterns = [] } = options as { tags?: string[]; patterns?: string[] };
   const expressions = patterns.map((pattern) => new RegExp(pattern));
   return (name) => tags.includes(name) || expressions.some((expression) => expression.test(name));
-}
-
-function featureTags(feature: Feature): readonly Tag[] {
-  return [
-    ...feature.tags,
-    ...feature.children.flatMap((child) => [
-      ...(child.rule?.tags ?? []),
-      ...(child.scenario?.tags ?? []),
-      ...(child.scenario?.examples.flatMap((examples) => examples.tags) ?? []),
-      ...(child.rule?.children.flatMap((nested) => [
-        ...(nested.scenario?.tags ?? []),
-        ...(nested.scenario?.examples.flatMap((examples) => examples.tags) ?? [])
-      ]) ?? [])
-    ])
-  ];
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function lineDiagnostic(document: LintDocument, line: number, ruleId: string, message: string, endColumn?: number) {
-  const lineText = document.lines[line - 1] ?? "";
-  return {
-    ruleId,
-    severity: "error" as const,
-    message,
-    start: { line, column: 1 },
-    end: { line, column: endColumn ?? Math.max(1, lineText.length + 1) }
-  };
-}
-
-function rangeDiagnostic(
-  document: LintDocument,
-  line: number,
-  column: number,
-  length: number,
-  ruleId: string,
-  message: string,
-  fix?: RuleFix
-) {
-  const start = document.offsetAt({ line, column });
-  const range = [start, Math.min(start + length, document.source.length)] as const;
-  return {
-    ruleId,
-    severity: "error" as const,
-    message,
-    start: { line, column },
-    end: { line, column: column + length },
-    range,
-    ...(fix ? { fix } : {})
-  };
 }
 
 function outlinePlaceholders(scenario: Scenario): string[] {
@@ -292,7 +248,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   "feature-size": {
     meta: {
-      description: "Limit the number of Scenarios in a Feature, including Scenarios under Rules.",
+      description: "Limit the number of Scenarios in a Feature, including Scenarios under Rules, optionally counting each Examples row.",
       category: "structure",
       recommended: false,
       defaultOptions: { maxScenarios: 20 },
@@ -303,9 +259,13 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
+      const { maxScenarios, countOutlineExamples = false } = options as { maxScenarios: number; countOutlineExamples?: boolean };
       let count = 0;
-      forEachScenario(document, () => { count += 1; });
-      const { maxScenarios } = options as { maxScenarios: number };
+      forEachScenario(document, (scenario) => {
+        count += countOutlineExamples && scenario.examples.length > 0
+          ? scenario.examples.reduce((rows, examples) => rows + examples.tableBody.length, 0)
+          : 1;
+      });
       if (count > maxScenarios) {
         report(lineDiagnostic(document, feature.location.line, "feature-size", `Feature contains ${count} Scenarios; configured maximum is ${maxScenarios}.`));
       }
@@ -314,7 +274,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   "name-length": {
     meta: {
-      description: "Limit Feature and Scenario name length.",
+      description: "Limit Feature and Scenario name length, or Feature, Rule, Scenario, and Step lengths separately.",
       category: "naming",
       recommended: false,
       defaultOptions: { max: 80 },
@@ -323,13 +283,21 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
     },
     validateOptions: nameLengthOptions,
     run({ document, options, report }) {
-      const { max } = options as { max: number };
-      if (document.feature && document.feature.name.length > max) {
-        report(lineDiagnostic(document, document.feature.location.line, "name-length", `Feature name has ${document.feature.name.length} characters; configured maximum is ${max}.`));
-      }
-      forEachScenario(document, (scenario) => {
-        if (scenario.name.length > max) report(lineDiagnostic(document, scenario.location.line, "name-length", `Scenario name has ${scenario.name.length} characters; configured maximum is ${max}.`));
-      });
+      const feature = document.feature;
+      if (!feature) return;
+      const configured = options as Readonly<Record<string, number>>;
+      // { max } keeps the original Feature and Scenario check; per-node limits follow gherkin-lint, defaulting to 70.
+      const limits: Readonly<Record<string, number | undefined>> = "max" in configured
+        ? { Feature: configured.max, Scenario: configured.max }
+        : { Feature: 70, Rule: 70, Scenario: 70, Step: 70, ...configured };
+      const check = (type: string, label: string, value: string, line: number) => {
+        const max = limits[type];
+        if (max !== undefined && value.length > max) report(lineDiagnostic(document, line, "name-length", `${type} ${label} has ${value.length} characters; configured maximum is ${max}.`));
+      };
+      check("Feature", "name", feature.name, feature.location.line);
+      for (const child of feature.children) if (child.rule) check("Rule", "name", child.rule.name, child.rule.location.line);
+      forEachScenario(document, (scenario) => check("Scenario", "name", scenario.name, scenario.location.line));
+      forEachStep(document, (step) => check("Step", "text", step.text, step.location.line));
     }
   },
 
@@ -476,7 +444,9 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
         report(rangeDiagnostic(document, lineNumber, 1, Math.max(1, line.length), "no-extra-blank-lines", "Unexpected consecutive blank line.", fix));
       }
     }
-  }
+  },
+
+  ...legacyRules
 };
 
 function stageName(stage: number): string {
@@ -523,7 +493,29 @@ export const projectRules: Readonly<Record<string, ProjectRuleModule<unknown>>> 
       examples: ["Rule: Coupon\n  Scenario: apply\n  Scenario: apply"],
       documentation: "docs/rules.md#no-duplicate-scenario-names"
     },
-    run({ documents, report }) {
+    validateOptions: duplicateScenarioOptions,
+    run({ documents, options, report }) {
+      if ((options as { scope?: string }).scope === "anywhere") {
+        const seen = new Map<string, { filePath: string; line: number }>();
+        for (const document of documents) {
+          forEachScenario(document, (scenario) => {
+            const name = scenario.name.trim().toLowerCase();
+            const first = seen.get(name);
+            if (!first) {
+              seen.set(name, { filePath: document.filePath, line: scenario.location.line });
+              return;
+            }
+            report({
+              filePath: document.filePath,
+              ruleId: "no-duplicate-scenario-names",
+              severity: "error",
+              message: `Scenario name duplicates ${first.filePath}:${first.line}.`,
+              start: { line: scenario.location.line, column: scenario.location.column ?? 1 }
+            });
+          });
+        }
+        return;
+      }
       for (const document of documents) {
         const feature = document.feature;
         if (!feature) continue;

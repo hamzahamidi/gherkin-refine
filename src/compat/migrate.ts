@@ -2,6 +2,7 @@ import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { LintConfig, RuleSetting, SeverityInput } from "../types.js";
 import { ConfigError } from "../config/index.js";
+import { legacyRules } from "../rules/legacy.js";
 
 export interface MigrationResult {
   readonly config: LintConfig;
@@ -16,9 +17,12 @@ const legacyStepsLimit = 15;
 
 export async function migrateLegacyFile(
   inputPath: string,
-  options: { readonly outputPath?: string; readonly dryRun?: boolean; readonly force?: boolean } = {}
+  options: { readonly outputPath?: string; readonly dryRun?: boolean; readonly force?: boolean; readonly strict?: boolean } = {}
 ): Promise<MigrationResult> {
   const result = migrateLegacyConfig(parseLegacyConfig(await readFile(inputPath, "utf8")));
+  if (options.strict && result.unsupported.length > 0) {
+    throw new ConfigError(`Legacy rules cannot be fully migrated: ${result.unsupported.join("; ")}`);
+  }
   if (!options.dryRun) {
     const outputPath = resolve(options.outputPath ?? "gherkin-refine.config.json");
     if (!options.force) {
@@ -108,7 +112,10 @@ function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] 
     "scenario-size": "scenario-size",
     "name-length": "name-length",
     "allowed-tags": "allowed-tags",
-    "no-restricted-tags": "no-restricted-tags"
+    "no-restricted-tags": "no-restricted-tags",
+    ...Object.fromEntries(Object.keys(legacyRules).map((id) => [id, id])),
+    "no-homogenous-tags": "no-homogeneous-tags",
+    "max-scenarios-per-file": "feature-size"
   };
   const newId = direct[oldId];
   if (!newId) return undefined;
@@ -126,16 +133,17 @@ function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] 
   }
   if (oldId === "name-length") {
     const limits = isRecord(options) ? options : {};
-    const feature = limitOrDefault(limits.Feature ?? limits.feature);
-    const scenario = limitOrDefault(limits.Scenario ?? limits.scenario);
-    const stepNote = "Step text limits do not have a modern equivalent.";
-    if (feature === scenario) return [[newId, { max: feature }, `partial: ${stepNote}`]];
-    const [lowerName, lower, higher] = feature < scenario ? ["Feature", feature, scenario] : ["Scenario", scenario, feature];
-    return [[newId, { max: higher }, `partial: one limit covers Feature and Scenario names, so the ${lowerName} limit rises from ${lower} to ${higher}. ${stepNote}`]];
+    return [[newId, Object.fromEntries(["Feature", "Rule", "Scenario", "Step"].map((key) => [key, limitOrDefault(limits[key] ?? limits[key.toLowerCase()])]))]];
   }
   if (oldId === "no-dupe-scenario-names") {
-    const scope = typeof options === "string" ? options : "anywhere";
-    return [[newId, undefined, scope === "in-feature" ? "scope now includes the enclosing Rule" : "partial: modern scope is within each Feature or Rule, not across all files."]];
+    return options === "in-feature" ? [[newId, undefined, "scope now includes the enclosing Rule"]] : [[newId, { scope: "anywhere" }]];
+  }
+  if (oldId === "max-scenarios-per-file") {
+    const value = isRecord(options) ? options : {};
+    return [[newId, {
+      maxScenarios: Number.isInteger(value.maxScenarios) ? value.maxScenarios : 10,
+      countOutlineExamples: typeof value.countOutlineExamples === "boolean" ? value.countOutlineExamples : true
+    }]];
   }
   if (oldId === "allowed-tags" || oldId === "no-restricted-tags") {
     return [[newId, options, "scope now includes tags inside Rule blocks"]];
