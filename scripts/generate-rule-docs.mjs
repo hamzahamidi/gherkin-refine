@@ -10,7 +10,7 @@ const check = process.argv.includes("--check");
 const { rules } = JSON.parse(execFileSync(process.execPath, [join(root, "dist/cli.js"), "--list-rules", "--format", "json"], { encoding: "utf8" }));
 const overview = await readFile(join(root, "docs/rules.md"), "utf8");
 const behavior = new Map();
-for (const line of overview.split("\n")) {
+for (const line of overview.split(/\r?\n/)) {
   const match = line.match(/^\| \[`([a-z0-9-]+)`\]\(rules\/[a-z0-9-]+\.md\) \| [^|]+ \| [^|]+ \| (.+) \|$/);
   if (match) behavior.set(match[1], match[2]);
 }
@@ -48,7 +48,7 @@ if (check) {
   const existing = new Set((await readdir(outputDirectory).catch(() => [])).filter((name) => name.endsWith(".md")));
   const stale = [...pages.keys()].filter((name) => !existing.has(name));
   for (const [name, content] of pages) {
-    if (existing.has(name) && (await readFile(join(outputDirectory, name), "utf8")) !== content) stale.push(name);
+    if (existing.has(name) && (await readFile(join(outputDirectory, name), "utf8")).replaceAll("\r\n", "\n") !== content) stale.push(name);
   }
   stale.push(...[...existing].filter((name) => !pages.has(name)));
   if (stale.length > 0) {
