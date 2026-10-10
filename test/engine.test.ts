@@ -401,6 +401,18 @@ describe("lintFiles", () => {
     expect(result.results.map((item) => item.filePath)).toEqual(["kept.feature"]);
   });
 
+  it("keeps gherkin-lint negation semantics for .gherkin-lintignore lines", async () => {
+    const cwd = await tempDirectory();
+    await mkdir(join(cwd, "features"));
+    await mkdir(join(cwd, "vendor"));
+    for (const path of ["features/a.feature", "features/b.feature", "vendor/c.feature"]) await writeFile(join(cwd, path), "Feature: F\n");
+    await writeFile(join(cwd, ".gherkin-lintignore"), "vendor/**\n!features/a.feature\n");
+
+    const result = await lintFiles(["."], { cwd, config: { extends: [] } });
+
+    expect(result.results.map((item) => item.filePath)).toEqual(["features/a.feature"]);
+  });
+
   it("reports an unreadable .gherkin-lintignore as a configuration error", async () => {
     const cwd = await tempDirectory();
     await mkdir(join(cwd, ".gherkin-lintignore"));
