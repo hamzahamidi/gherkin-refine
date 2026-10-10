@@ -113,7 +113,7 @@ describe("migrateLegacyConfig", () => {
       "indentation": "off",
       "allowed-tags": ["off", { tags: ["@smoke"] }]
     });
-    expect(result.config.rules).toEqual({ "name-length": "off", "scenario-size": "off", "background-size": "off", "allowed-tags": "off" });
+    expect(result.config.rules).toEqual({ "name-length": "off", "scenario-size": "off", "background-size": "off", "indentation": "off", "allowed-tags": "off" });
     expect(result.unsupported).toEqual([]);
   });
 

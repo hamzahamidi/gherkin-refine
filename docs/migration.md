@@ -28,6 +28,8 @@ Keep `.gherkin-lintignore`. gherkin-refine reads it from the working directory o
 | `keywords-in-logical-order` | `logical-keyword-order` | Uses parser semantic step types, including localized dialects |
 | `allowed-tags` | `allowed-tags` | Same `tags` and `patterns` options. Tags inside Rule blocks are also checked |
 | `no-restricted-tags` | `no-restricted-tags` | Same `tags` and `patterns` options. Tags inside Rule blocks are also checked |
+| `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags` | Same names | Same options and findings. Each one except `file-name` has a safe autofix |
+| `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, `no-homogenous-tags` | Same names | Same findings. Except for `indentation`, rules that walk Scenarios also check the ones inside Rule blocks |
 | Other rules | none | Reported as unsupported |
 
 This is a migration aid, not a compatibility mode. Review output because the former and current tools have different parser and scope behavior.

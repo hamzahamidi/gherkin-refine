@@ -2,6 +2,7 @@ import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { LintConfig, RuleSetting, SeverityInput } from "../types.js";
 import { ConfigError } from "../config/index.js";
+import { legacyRules } from "../rules/legacy.js";
 
 export interface MigrationResult {
   readonly config: LintConfig;
@@ -108,7 +109,8 @@ function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] 
     "scenario-size": "scenario-size",
     "name-length": "name-length",
     "allowed-tags": "allowed-tags",
-    "no-restricted-tags": "no-restricted-tags"
+    "no-restricted-tags": "no-restricted-tags",
+    ...Object.fromEntries(Object.keys(legacyRules).map((id) => [id, id]))
   };
   const newId = direct[oldId];
   if (!newId) return undefined;

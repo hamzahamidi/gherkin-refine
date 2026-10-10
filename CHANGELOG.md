@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0 (2026-10-10)
+
+Adds 16 rules under their gherkin-lint names, with the same options: `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, and `no-homogenous-tags`. The four formatting rules have safe autofixes.
+
 ## 1.2.0 (2026-10-10)
 
 Makes gherkin-refine a drop-in replacement for gherkin-lint: installs a `gherkin-lint` command, reads `.gherkin-lintrc` from the working directory, accepts `-f`, `-i` and `-r`, and warns once per run about legacy rules it cannot fully check.

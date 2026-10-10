@@ -1,7 +1,9 @@
 import { StepKeywordType } from "@cucumber/messages";
 import type { LintDocument, ProjectRuleModule, RuleFix, RuleModule } from "../types.js";
-import type { Feature, Scenario, Tag } from "@cucumber/messages";
+import type { Scenario, Tag } from "@cucumber/messages";
 import { forEachScenario, forEachStep } from "../parser/document.js";
+import { featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic } from "./helpers.js";
+import { legacyRules } from "./legacy.js";
 
 const nameLengthOptions = (value: unknown): value is { max: number } =>
   isRecord(value) && Number.isInteger(value.max) && Number(value.max) > 0;
@@ -39,62 +41,6 @@ function tagMatcher(options: unknown): (name: string) => boolean {
   const { tags = [], patterns = [] } = options as { tags?: string[]; patterns?: string[] };
   const expressions = patterns.map((pattern) => new RegExp(pattern));
   return (name) => tags.includes(name) || expressions.some((expression) => expression.test(name));
-}
-
-function featureTags(feature: Feature): readonly Tag[] {
-  return [
-    ...feature.tags,
-    ...feature.children.flatMap((child) => [
-      ...(child.rule?.tags ?? []),
-      ...(child.scenario?.tags ?? []),
-      ...(child.scenario?.examples.flatMap((examples) => examples.tags) ?? []),
-      ...(child.rule?.children.flatMap((nested) => [
-        ...(nested.scenario?.tags ?? []),
-        ...(nested.scenario?.examples.flatMap((examples) => examples.tags) ?? [])
-      ]) ?? [])
-    ])
-  ];
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function lineDiagnostic(document: LintDocument, line: number, ruleId: string, message: string, endColumn?: number) {
-  const lineText = document.lines[line - 1] ?? "";
-  return {
-    ruleId,
-    severity: "error" as const,
-    message,
-    start: { line, column: 1 },
-    end: { line, column: endColumn ?? Math.max(1, lineText.length + 1) }
-  };
-}
-
-function rangeDiagnostic(
-  document: LintDocument,
-  line: number,
-  column: number,
-  length: number,
-  ruleId: string,
-  message: string,
-  fix?: RuleFix
-) {
-  const start = document.offsetAt({ line, column });
-  const range = [start, Math.min(start + length, document.source.length)] as const;
-  return {
-    ruleId,
-    severity: "error" as const,
-    message,
-    start: { line, column },
-    end: { line, column: column + length },
-    range,
-    ...(fix ? { fix } : {})
-  };
 }
 
 function outlinePlaceholders(scenario: Scenario): string[] {
@@ -476,7 +422,9 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
         report(rangeDiagnostic(document, lineNumber, 1, Math.max(1, line.length), "no-extra-blank-lines", "Unexpected consecutive blank line.", fix));
       }
     }
-  }
+  },
+
+  ...legacyRules
 };
 
 function stageName(stage: number): string {

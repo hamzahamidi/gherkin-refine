@@ -44,13 +44,13 @@ describe("CLI", () => {
     const directory = await mkdtemp(join(tmpdir(), "gherkinlint-legacy-"));
     directories.push(directory);
     await mkdir(join(directory, "features"));
-    await writeFile(join(directory, ".gherkin-lintrc"), JSON.stringify({ "no-trailing-spaces": "on", "indentation": "on" }));
+    await writeFile(join(directory, ".gherkin-lintrc"), JSON.stringify({ "no-trailing-spaces": "on", "only-one-when": "on" }));
     await writeFile(join(directory, "features", "a.feature"), "Feature: A \n");
     await writeFile(join(directory, "features", "b.feature"), "Feature: B\n");
 
     const run = spawnSync(process.execPath, [cliPath, "-f", "json", "-i", "features/a.feature", "--rulesdir", "features", "-r", "/missing"], { cwd: directory, encoding: "utf8" });
     expect(run.status).toBe(0);
-    expect(run.stderr).toBe('warning: .gherkin-lintrc rules not fully checked: indentation. Run "gherkin-refine migrate --dry-run" for details.\n');
+    expect(run.stderr).toBe('warning: .gherkin-lintrc rules not fully checked: only-one-when. Run "gherkin-refine migrate --dry-run" for details.\n');
     expect(JSON.parse(run.stdout).results.map((item: { filePath: string }) => item.filePath)).toEqual(["features/b.feature"]);
 
     await writeFile(join(directory, "features", "custom-rule.js"), "module.exports = {};\n");
