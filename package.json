@@ -1,6 +1,6 @@
 {
   "name": "gherkin-refine",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Gherkin and Cucumber linter with gherkin-lint compatibility: all 31 gherkin-lint rules, safe autofix, plugins, and SARIF output.",
   "type": "module",
   "bin": {

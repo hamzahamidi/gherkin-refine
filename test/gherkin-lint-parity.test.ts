@@ -12,7 +12,7 @@ const fixtures = join(import.meta.dirname, "fixtures/gherkin-lint-parity");
 
 type Mode = "same" | "subset" | "count" | "files";
 
-const cases: readonly (readonly [string, unknown, Mode, string?])[] = [
+const cases: readonly (readonly [string, unknown, Mode, (string | readonly string[])?])[] = [
   ["no-unnamed-features", "on", "same"],
   ["no-unnamed-scenarios", "on", "same"],
   ["no-scenario-outlines-without-examples", "on", "same"],
@@ -41,7 +41,7 @@ const cases: readonly (readonly [string, unknown, Mode, string?])[] = [
   ["scenario-size", ["on", { "steps-length": { Scenario: 3, Background: 1 } }], "files"],
   ["no-trailing-spaces", "on", "same", "no-trailing-whitespace"],
   ["no-duplicate-tags", "on", "same"],
-  ["no-unused-variables", "on", "same", "no-unused-outline-variables"],
+  ["no-unused-variables", "on", "same", ["no-unused-outline-variables", "no-undefined-outline-variables"]],
   ["no-dupe-feature-names", "on", "same", "no-duplicate-feature-names"],
   ["no-dupe-scenario-names", "on", "count", "no-duplicate-scenario-names"],
   ["no-dupe-scenario-names", ["on", "in-feature"], "same", "no-duplicate-scenario-names"],
@@ -68,8 +68,8 @@ function key(filePath: string, line: number, mode: Mode): string {
 }
 
 describe("gherkin-lint 4.2.4 comparison", () => {
-  const table = cases.map(([rule, setting, mode, nativeId]) => ({ rule, setting, mode, nativeId: nativeId ?? rule }));
-  it.each(table)("$rule $setting", async ({ rule, setting, mode, nativeId }) => {
+  const table = cases.map(([rule, setting, mode, nativeIds]) => ({ rule, setting, mode, nativeIds: [nativeIds ?? rule].flat() }));
+  it.each(table)("$rule $setting", async ({ rule, setting, mode, nativeIds }) => {
     await writeFile(join(workspace, ".gherkin-lintrc"), JSON.stringify({ [rule]: setting }));
 
     // gherkin-lint calls process.exit before a piped stream drains, so its report goes to a file.
@@ -84,7 +84,7 @@ describe("gherkin-lint 4.2.4 comparison", () => {
     expect(legacy.length, "fixtures must trigger the rule").toBeGreaterThan(0);
     const result = await lintFiles(["."], { cwd: workspace });
     const native = result.results.flatMap((file) => file.diagnostics
-      .filter((diagnostic) => diagnostic.ruleId === nativeId)
+      .filter((diagnostic) => nativeIds.includes(diagnostic.ruleId))
       .map((diagnostic) => key(join(workspace, file.filePath), diagnostic.start.line, mode)));
 
     if (mode === "same") expect([...native].sort()).toEqual([...legacy].sort());

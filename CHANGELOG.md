@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2 (2026-10-10)
+
+Maps gherkin-lint's `no-unused-variables` to both `no-unused-outline-variables` and `no-undefined-outline-variables`. Both rules read placeholders in the Scenario Outline title as well as in steps and step arguments.
+
 ## 1.3.1 (2026-10-10)
 
 Points the package homepage to the documentation site, which now publishes `llms.txt` and `llms-full.txt`. Explains that TypeScript configuration needs Node.js 22.18 instead of failing with an import error. Adds a security policy, a contributing guide, and a CI test that compares every gherkin-lint rule against gherkin-lint 4.2.4.

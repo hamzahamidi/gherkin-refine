@@ -54,7 +54,7 @@ function tagMatcher(options: unknown): (name: string) => boolean {
 }
 
 function outlinePlaceholders(scenario: Scenario): string[] {
-  const values: string[] = [];
+  const values: string[] = [scenario.name];
   for (const step of scenario.steps) {
     values.push(step.text);
     if (step.docString) values.push(step.docString.content);
@@ -141,7 +141,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   "no-unused-outline-variables": {
     meta: {
-      description: "Disallow Scenario Outline variables that are never used in steps or arguments.",
+      description: "Disallow Scenario Outline variables that are never used in the title, steps or arguments.",
       category: "correctness",
       recommended: true,
       examples: ["Scenario Outline: lookup\n  Given <id> exists\n  Examples:\n    | id | unused |"],
@@ -175,13 +175,16 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       forEachScenario(document, (scenario) => {
         if (!scenario.examples.length) return;
         const declared = scenario.examples.map((examples) => new Set((examples.tableHeader?.cells ?? []).map((cell) => cell.value)));
-        for (const step of scenario.steps) {
-          const values = [
+        const sources = [
+          { location: scenario.location, values: [scenario.name] },
+          ...scenario.steps.map((step) => ({ location: step.location, values: [
             step.text,
             ...(step.docString ? [step.docString.content] : []),
             ...(step.dataTable?.rows.flatMap((row) => row.cells.map((cell) => cell.value)) ?? [])
-          ];
-          let cursor = document.offsetAt({ line: step.location.line, column: step.location.column ?? 1 });
+          ] }))
+        ];
+        for (const { location, values } of sources) {
+          let cursor = document.offsetAt({ line: location.line, column: location.column ?? 1 });
           for (const value of values) {
             for (const match of value.matchAll(/<([^<>]+)>/g)) {
               const name = match[1] ?? "";

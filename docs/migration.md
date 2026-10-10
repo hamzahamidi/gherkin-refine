@@ -20,7 +20,7 @@ Keep `.gherkin-lintignore`. gherkin-refine reads it from the working directory o
 | `no-duplicate-tags` | `no-duplicate-tags` | Same intent |
 | `no-dupe-feature-names` | `no-duplicate-feature-names` | Scope is the set of linted files |
 | `no-dupe-scenario-names` | `no-duplicate-scenario-names` | The default `anywhere` maps to `{ scope: "anywhere" }`; `in-feature` maps to one Feature or Rule. Names compare case-insensitively |
-| `no-unused-variables` | `no-unused-outline-variables` | Uses parsed step arguments and localized AST |
+| `no-unused-variables` | `no-unused-outline-variables`, `no-undefined-outline-variables` | Unused Examples columns and undeclared placeholders map separately. Each undeclared placeholder is reported where it appears |
 | `scenario-size` | `scenario-size`, `background-size` | Scenario and Background limits map separately. Without options, both use the gherkin-lint default of 15 |
 | `name-length` | `name-length` | Same per-node limits for Feature, Rule, Scenario, and Step |
 | `no-trailing-spaces` | `no-trailing-whitespace` | Same intent, with safe autofix |

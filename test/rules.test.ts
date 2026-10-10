@@ -73,6 +73,24 @@ describe("opt in rule behavior", () => {
     ]);
   });
 
+  it("treats Scenario Outline titles as placeholder uses", async () => {
+    const result = await lintText(`Feature: Titles
+  Scenario Outline: Case <id>
+    Given a state
+    Examples:
+      | id |
+      | 1  |
+  Scenario Outline: Title <absent>
+    Given <id>
+    Examples:
+      | id |
+      | 1  |
+`);
+    expect(result.results[0]?.diagnostics.map(d => [d.ruleId, d.start.line, d.start.column, d.message])).toEqual([
+      ["no-undefined-outline-variables", 7, 27, "Placeholder <absent> has no matching Examples column."]
+    ]);
+  });
+
   it("checks placeholders against every Examples table, including empty tables", async () => {
     const result = await lintText(`Feature: Examples
   Scenario Outline: Different headers

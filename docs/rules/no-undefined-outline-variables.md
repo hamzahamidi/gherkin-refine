@@ -8,7 +8,7 @@ Disallow Scenario Outline placeholders without a matching Examples column.
 | --- | --- | --- | --- |
 | correctness | yes | no | none |
 
-Finds step placeholders without an Examples column.
+Finds placeholders in the Scenario Outline title, steps or step arguments without an Examples column.
 
 ## Configuration
 

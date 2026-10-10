@@ -2,13 +2,13 @@
 
 # no-unused-outline-variables
 
-Disallow Scenario Outline variables that are never used in steps or arguments.
+Disallow Scenario Outline variables that are never used in the title, steps or arguments.
 
 | Category | Recommended | Safe autofix | Default options |
 | --- | --- | --- | --- |
 | correctness | yes | no | none |
 
-Finds declared Examples columns unused in steps or step arguments.
+Finds declared Examples columns unused in the Scenario Outline title, steps or step arguments.
 
 ## Configuration
 

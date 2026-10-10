@@ -145,6 +145,9 @@ function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] 
       countOutlineExamples: typeof value.countOutlineExamples === "boolean" ? value.countOutlineExamples : true
     }]];
   }
+  if (oldId === "no-unused-variables") {
+    return [[newId], ["no-undefined-outline-variables"]];
+  }
   if (oldId === "allowed-tags" || oldId === "no-restricted-tags") {
     return [[newId, options, "scope now includes tags inside Rule blocks"]];
   }
