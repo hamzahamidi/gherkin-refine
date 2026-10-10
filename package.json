@@ -20,6 +20,7 @@
     "LICENSE",
     "CHANGELOG.md",
     "docs",
+    "!docs/.vitepress",
     "schemas"
   ],
   "engines": {
@@ -35,11 +36,15 @@
     "smoke": "node scripts/smoke-package.mjs",
     "bench": "node --expose-gc scripts/benchmark.mjs",
     "check:pack": "npm pack --dry-run",
-    "validate": "npm run typecheck && npm run lint && npm run build && npm test && npm run smoke && npm run check:pack",
+    "validate": "npm run typecheck && npm run lint && npm run build && npm run docs:check && npm test && npm run smoke && npm run check:pack",
     "prepack": "npm run build",
     "compatibility": "npm run build && node scripts/compatibility.mjs",
     "compatibility:full": "npm run build && node scripts/compatibility.mjs --full",
-    "compatibility:published": "node scripts/compatibility.mjs --full --published"
+    "compatibility:published": "node scripts/compatibility.mjs --full --published",
+    "docs:rules": "npm run build && node scripts/generate-rule-docs.mjs",
+    "docs:dev": "npm run docs:rules && vitepress dev docs",
+    "docs:build": "npm run docs:rules && vitepress build docs",
+    "docs:check": "node scripts/generate-rule-docs.mjs --check"
   },
   "keywords": [
     "gherkin",
@@ -66,7 +71,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/hamzahamidi/gherkin-refine.git"
   },
-  "homepage": "https://github.com/hamzahamidi/gherkin-refine#readme",
+  "homepage": "https://hamidihamza.com/gherkin-refine/",
   "funding": "https://github.com/sponsors/hamzahamidi",
   "bugs": {
     "url": "https://github.com/hamzahamidi/gherkin-refine/issues"
@@ -87,6 +92,7 @@
     "globals": "^17.13.0",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.56.0",
+    "vitepress": "1.6.4",
     "vitest": "^4.1.0"
   }
 }
