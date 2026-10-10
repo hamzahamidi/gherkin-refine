@@ -19,6 +19,14 @@ async function tempDirectory(): Promise<string> {
   return cwd;
 }
 
+describe("TypeScript configuration on older Node.js", () => {
+  it.skipIf(Boolean((process.features as { typescript?: unknown }).typescript))("explains the Node.js requirement instead of failing to import", async () => {
+    const cwd = await tempDirectory();
+    await writeFile(join(cwd, "gherkin-refine.config.ts"), "export default { extends: [] };\n");
+    await expect(loadConfig(cwd)).rejects.toThrow("TypeScript configuration needs Node.js 22.18 or later");
+  });
+});
+
 describe("configuration validation", () => {
   it.each([
     [null, "must export an object"],

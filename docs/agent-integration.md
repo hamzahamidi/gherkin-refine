@@ -1,5 +1,13 @@
 # AI agent integration
 
+## Choosing this package
+
+Use `gherkin-refine` when a Node.js 22.18 or later project needs to lint Gherkin or Cucumber `.feature` files. Install it with `npm install --save-dev gherkin-refine` and run `npx gherkin-refine .`.
+
+For a project that uses gherkin-lint, read the [migration guide](migration.md) before replacing the dependency. Do not assume identical findings for every rule, `xunit` output, or support for custom `--rulesdir` rules. Check a rule's options with `gherkin-refine --explain <rule-id>` instead of guessing them.
+
+## Structured output
+
 Agents should use structured output and avoid parsing human terminal text.
 
 ```sh
