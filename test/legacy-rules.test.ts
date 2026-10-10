@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { lintText } from "../src/index.js";
+import { lintFiles, lintText } from "../src/index.js";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { RuleSetting } from "../src/types.js";
 
 async function lint(source: string, rules: Record<string, RuleSetting>, filePath = "features/sample.feature") {
@@ -114,9 +117,14 @@ Feature: F
       Given z
 `;
     expect((await lint(source, { "no-homogenous-tags": "error" })).map((item) => [item.start.line, item.message])).toEqual([
-      [1, "All Scenarios on this Feature have the same tag(s), they should be defined on the Feature instead: @t."],
-      [3, "All Examples of a Scenario Outline have the same tag(s), they should be defined on the Scenario Outline instead: @e."],
-      [16, "All Scenarios on this Rule have the same tag(s), they should be defined on the Rule instead: @r."]
+      [1, "Tag @t is on every Scenario of this Feature; define it on the Feature instead."],
+      [3, "Tag @e is on every Examples block of this Scenario Outline; define it on the Scenario Outline instead."]
+    ]);
+    expect(await lines("@f\nFeature: F\n  @only\n  Scenario: one\n    Given x\n", "no-homogenous-tags")).toEqual([]);
+    const twoTags = "Feature: F\n  @a @b\n  Scenario: one\n    Given x\n  @b @a\n  Scenario: two\n    Given y\n";
+    expect((await lint(twoTags, { "no-homogenous-tags": "error" })).map((item) => item.message)).toEqual([
+      "Tag @a is on every Scenario of this Feature; define it on the Feature instead.",
+      "Tag @b is on every Scenario of this Feature; define it on the Feature instead."
     ]);
   });
 
@@ -165,11 +173,71 @@ Feature: F
     expect(await lines("Feature: F\n", "file-name", ["error", { style: "camelCase" }], "features/emoji😀Name.feature")).toEqual([]);
   });
 
+  it("ignores a Background without Scenarios, which no-files-without-scenarios covers", async () => {
+    expect(await lines("Feature: F\n  Background:\n    Given x\n", "no-background-only-scenario")).toEqual([]);
+  });
+
+  it("requires tags matching each pattern on tagged Scenarios", async () => {
+    const source = "Feature: F\n  @jira-1\n  Scenario: ok\n    Given x\n  @smoke\n  Scenario Outline: missing\n    Given <x>\n    Examples:\n      | x |\n      | 1 |\n  Scenario: untagged\n    Given y\n";
+    expect((await lint(source, { "required-tags": ["error", { tags: ["^@jira-\\d+$"] }] })).map((item) => [item.start.line, item.message])).toEqual([
+      [6, "No tag found matching ^@jira-\\d+$ for Scenario Outline."]
+    ]);
+    expect(await lines(source, "required-tags", ["error", { tags: ["^@jira-\\d+$"], ignoreUntagged: false }])).toEqual([6, 11]);
+  });
+
+  it("restricts patterns case-insensitively in names, descriptions, and steps", async () => {
+    const source = "Feature: F\n  Draft notes\n  more text\n\n  Background:\n    Given a TODO step\n\n  Scenario: todo later\n    Given x\n";
+    const diagnostics = await lint(source, { "no-restricted-patterns": ["error", { Global: ["todo"], Feature: ["^draft"] }] });
+    expect(diagnostics.map((item) => [item.start.line, item.message])).toEqual([
+      [1, "Feature description: \"Draft notes\" matches restricted pattern \"/^draft/i\"."],
+      [6, "Step text: \"a TODO step\" matches restricted pattern \"/todo/i\"."],
+      [8, "Scenario name: \"todo later\" matches restricted pattern \"/todo/i\"."]
+    ]);
+  });
+
+  it("counts Scenarios per file, expanding outline rows unless disabled", async () => {
+    const source = "Feature: F\n  Scenario: a\n    Given x\n  Scenario Outline: b\n    Given <x>\n    Examples:\n      | x |\n      | 1 |\n      | 2 |\n";
+    expect((await lint(source, { "max-scenarios-per-file": ["error", { maxScenarios: 2 }] }))[0]?.message).toBe("Number of scenarios exceeds maximum: 3/2.");
+    expect(await lines(source, "max-scenarios-per-file", ["error", { maxScenarios: 2, countOutlineExamples: false }])).toEqual([]);
+  });
+
+  it("allows one explicit When and does not count And after When", async () => {
+    const source = "Feature: F\n  Scenario: S\n    Given x\n    When a\n    And b\n    Then c\n  Scenario: T\n    When a\n    Then b\n    When c\n";
+    expect((await lint(source, { "only-one-when": "error" })).map((item) => [item.start.line, item.message])).toEqual([
+      [10, "Scenario \"T\" contains 2 When statements (max 1)."]
+    ]);
+  });
+
+  it("checks content inside Rules when rule content sets its offset", async () => {
+    const source = "Feature: F\n  Rule: R\n    Scenario: S\n      Given x\n     When y\n";
+    const levels = { Rule: 2, Scenario: 2, Step: 4 };
+    expect(await lines(source, "indentation", ["error", levels])).toEqual([]);
+    expect(await lines(source, "indentation", ["error", { ...levels, "rule content": 2 }])).toEqual([5]);
+  });
+
+  it("produces stable output when every fixable rule runs twice", async () => {
+    const rules = {
+      indentation: ["error", { Scenario: 2, Step: 4, Examples: 4, example: 6 }],
+      "new-line-at-eof": ["error", "yes"],
+      "use-and": "error",
+      "one-space-between-tags": "error",
+      "no-trailing-whitespace": "error",
+      "no-extra-blank-lines": "error"
+    } as const;
+    const source = "@a   @b\nFeature: F  \n\n\n Scenario Outline: S\n  Given <x>\n  Given y\n      \"\"\"\n      keep  \n\n\n      \"\"\"\n   Examples:\n   | x |\n   | 1 |";
+    const once = (await lintText(source, { filePath: "features/sample.feature", fix: true, config: { extends: [], rules } })).results[0]?.output ?? "";
+    const twice = (await lintText(once, { filePath: "features/sample.feature", fix: true, config: { extends: [], rules } })).results[0];
+    expect(twice?.output ?? once).toBe(once);
+    expect(twice?.diagnostics).toEqual([]);
+    expect(once).toContain("      keep  \n\n\n");
+  });
+
   it.each(["", "# comment only\n"])("reports only missing content on a featureless document: %j", async source => {
     const rules = Object.fromEntries([
       "no-unnamed-features", "no-unnamed-scenarios", "no-scenario-outlines-without-examples", "no-examples-in-scenarios", "no-empty-file",
       "no-files-without-scenarios", "no-empty-background", "no-background-only-scenario", "no-partially-commented-tag-lines",
-      "one-space-between-tags", "no-superfluous-tags", "no-homogenous-tags", "use-and", "indentation"
+      "one-space-between-tags", "no-superfluous-tags", "no-homogenous-tags", "use-and", "indentation",
+      "required-tags", "no-restricted-patterns", "max-scenarios-per-file", "only-one-when"
     ].map((id) => [id, "error" as const]));
     expect((await lint(source, rules)).map((item) => item.ruleId)).toEqual(["no-empty-file", "no-unnamed-features"]);
   });
@@ -197,8 +265,63 @@ Feature: F
 
   it.each([
     ["indentation", { Step: -1 }], ["indentation", { Unknown: 2 }], ["indentation", "two"],
-    ["new-line-at-eof", "maybe"], ["file-name", { style: "SCREAMING" }], ["file-name", { case: "camelCase" }]
+    ["new-line-at-eof", "maybe"], ["file-name", { style: "SCREAMING" }], ["file-name", { case: "camelCase" }],
+    ["indentation", { "rule content": "2" }], ["required-tags", { tags: ["("] }], ["required-tags", { ignoreUntagged: "yes" }],
+    ["no-restricted-patterns", { Step: ["x"] }], ["no-restricted-patterns", { Global: ["("] }], ["max-scenarios-per-file", { maxScenarios: -1 }],
+    ["max-scenarios-per-file", { countOutlineExamples: 1 }], ["name-length", { max: 10, Step: 5 }], ["name-length", { Background: 5 }],
+    ["no-duplicate-scenario-names", { scope: "everywhere" }]
   ])("rejects invalid options for %s: %j", async (rule, options) => {
     await expect(lintText("Feature: F\n", { config: { extends: [], rules: { [rule]: ["error", options] } } })).rejects.toThrow("Invalid options for rule");
+  });
+
+  it("walks Feature Backgrounds and Rule children in the tag and pattern rules", async () => {
+    const source = `Feature: F
+  Background:
+    Given shared
+
+  Rule: Draft rule
+    Background:
+      Given a draft step
+
+    @r
+    Scenario: one
+      Given x
+
+    @r
+    Scenario: two
+      Given y
+`;
+    expect(await lines(source, "no-superfluous-tags")).toEqual([]);
+    expect((await lint(source, { "no-homogenous-tags": "error" })).map((item) => [item.start.line, item.message])).toEqual([
+      [5, "Tag @r is on every Scenario of this Rule; define it on the Rule instead."]
+    ]);
+    expect((await lint(source, { "no-restricted-patterns": ["error", { Rule: ["draft"], Background: ["draft"] }] })).map((item) => [item.start.line, item.message])).toEqual([
+      [5, "Rule name: \"Draft rule\" matches restricted pattern \"/draft/i\"."],
+      [7, "Step text: \"a draft step\" matches restricted pattern \"/draft/i\"."]
+    ]);
+  });
+
+  it("checks Feature, Rule, Scenario, and Step lengths separately and keeps the max shorthand", async () => {
+    const source = "Feature: Twelve chars\n  Rule: Rule name\n    Scenario: Scenario name\n      Given a long step text\n";
+    expect((await lint(source, { "name-length": ["error", { Feature: 5, Rule: 50, Scenario: 5, Step: 10 }] })).map((item) => item.message)).toEqual([
+      "Feature name has 12 characters; configured maximum is 5.",
+      "Scenario name has 13 characters; configured maximum is 5.",
+      "Step text has 16 characters; configured maximum is 10."
+    ]);
+    expect(await lines(source, "name-length", ["error", { max: 12 }])).toEqual([3]);
+  });
+
+  it("finds duplicate Scenario names across files with the anywhere scope", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "gherkin-refine-dupes-"));
+    try {
+      await writeFile(join(cwd, "a.feature"), "Feature: A\n  Scenario: Pay\n    Given x\n");
+      await writeFile(join(cwd, "b.feature"), "Feature: B\n  Rule: R\n    Scenario: pay\n      Given y\n");
+      const anywhere = await lintFiles(["."], { cwd, config: { extends: [], rules: { "no-duplicate-scenario-names": ["error", { scope: "anywhere" }] } } });
+      expect(anywhere.results.flatMap((item) => item.diagnostics.map((diagnostic) => [item.filePath, diagnostic.message]))).toEqual([["b.feature", "Scenario name duplicates a.feature:2."]]);
+      const feature = await lintFiles(["."], { cwd, config: { extends: [], rules: { "no-duplicate-scenario-names": "error" } } });
+      expect(feature.summary.errors).toBe(0);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 });

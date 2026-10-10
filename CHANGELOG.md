@@ -2,7 +2,7 @@
 
 ## 1.3.0 (2026-10-10)
 
-Adds 16 rules under their gherkin-lint names, with the same options: `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, and `no-homogenous-tags`. The four formatting rules have safe autofixes.
+Supports every gherkin-lint 4.2.4 rule. Adds 20 rules under their gherkin-lint names: `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, `no-homogenous-tags`, `required-tags`, `no-restricted-patterns`, `max-scenarios-per-file`, and `only-one-when`. The four formatting rules have safe autofixes. `name-length` accepts per-node limits, `no-duplicate-scenario-names` accepts `{ scope: "anywhere" }`, `indentation` can check content inside Rules, and `migrate --strict` fails on a lossy migration. Fixes gherkin-lint issues #159, #170, #231, #257, and #345.
 
 ## 1.2.0 (2026-10-10)
 

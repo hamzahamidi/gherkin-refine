@@ -1,9 +1,9 @@
 import { dialects } from "@cucumber/gherkin";
-import type { Examples, Feature, Rule, Scenario, Step, Tag } from "@cucumber/messages";
+import type { Background, Examples, Feature, Rule, Scenario, Step, Tag } from "@cucumber/messages";
 import { basename } from "node:path";
 import { forEachScenario } from "../parser/document.js";
 import type { LintDocument, RuleModule } from "../types.js";
-import { featureTags, isRecord, lineDiagnostic, rangeDiagnostic } from "./helpers.js";
+import { featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic } from "./helpers.js";
 
 const INDENTATION_DEFAULTS: Readonly<Record<string, number>> = {
   Feature: 0,
@@ -19,7 +19,18 @@ const INDENTATION_DEFAULTS: Readonly<Record<string, number>> = {
   and: 2,
   but: 2
 };
-const INDENTATION_KEYS = new Set([...Object.keys(INDENTATION_DEFAULTS), "feature tag", "scenario tag"]);
+const INDENTATION_KEYS = new Set([...Object.keys(INDENTATION_DEFAULTS), "feature tag", "scenario tag", "rule content"]);
+
+const RESTRICTED_PATTERN_KEYS = new Set(["Global", "Feature", "Background", "Scenario", "ScenarioOutline", "Rule"]);
+
+function isValidPattern(pattern: string): boolean {
+  try {
+    new RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const FILE_NAME_STYLES: Readonly<Record<string, (name: string) => string>> = {
   PascalCase: (name) => startCase(name).replace(/ /g, ""),
@@ -240,7 +251,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   "no-background-only-scenario": {
     meta: {
-      description: "Disallow a Background that applies to a single Scenario.",
+      description: "Disallow a Background that applies to exactly one Scenario.",
       category: "structure",
       recommended: false,
       examples: ["Background: shared by one Scenario"],
@@ -257,7 +268,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       ];
       for (const scope of scopes) {
         const background = scope.children.find((child) => child.background)?.background;
-        if (background && scenarioCount(scope.children) <= 1) {
+        if (background && scenarioCount(scope.children) === 1) {
           report(lineDiagnostic(document, background.location.line, "no-background-only-scenario", "Backgrounds are not allowed when there is just one scenario."));
         }
       }
@@ -354,7 +365,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   "no-homogenous-tags": {
     meta: {
-      description: "Disallow a tag on every Scenario or every Examples block where it belongs on the parent.",
+      description: "Disallow a tag on every one of two or more Scenarios or Examples blocks where it belongs on the parent.",
       category: "tags",
       recommended: false,
       examples: ["@smoke on every Scenario"],
@@ -365,17 +376,16 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       if (!feature) return;
       for (const { node, scenarios } of containers(feature)) {
         for (const scenario of scenarios) {
-          const shared = intersection(scenario.examples.map((examples) => examples.tags.map((tag) => tag.name)));
-          if (shared.length > 0) {
+          if (scenario.examples.length < 2) continue;
+          for (const tag of intersection(scenario.examples.map((examples) => examples.tags.map((item) => item.name)))) {
             report(lineDiagnostic(document, scenario.location.line, "no-homogenous-tags",
-              `All Examples of a Scenario Outline have the same tag(s), they should be defined on the Scenario Outline instead: ${shared.join(", ")}.`));
+              `Tag ${tag} is on every Examples block of this Scenario Outline; define it on the Scenario Outline instead.`));
           }
         }
-        const shared = intersection(scenarios.map((scenario) => scenario.tags.map((tag) => tag.name)));
-        if (shared.length > 0) {
-          const parent = node === feature ? "Feature" : "Rule";
-          report(lineDiagnostic(document, node.location.line, "no-homogenous-tags",
-            `All Scenarios on this ${parent} have the same tag(s), they should be defined on the ${parent} instead: ${shared.join(", ")}.`));
+        if (scenarios.length < 2) continue;
+        const parent = node === feature ? "Feature" : "Rule";
+        for (const tag of intersection(scenarios.map((scenario) => scenario.tags.map((item) => item.name)))) {
+          report(lineDiagnostic(document, node.location.line, "no-homogenous-tags", `Tag ${tag} is on every Scenario of this ${parent}; define it on the ${parent} instead.`));
         }
       }
     }
@@ -413,7 +423,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   indentation: {
     meta: {
-      description: "Require configured indentation for Feature, Background, Rule, Scenario, step, Examples, and tag lines.",
+      description: "Require configured indentation for Feature, Background, Rule, Scenario, step, Examples, and tag lines; content inside a Rule is checked when `rule content` sets its extra indentation.",
       category: "formatting",
       recommended: false,
       fixable: true,
@@ -430,42 +440,50 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       const levels: Record<string, number> = { ...INDENTATION_DEFAULTS, ...configured };
       levels["feature tag"] ??= levels.Feature as number;
       levels["scenario tag"] ??= levels.Scenario as number;
-      const test = (location: { line: number; column?: number }, type: string) => {
+      const test = (location: { line: number; column?: number }, type: string, offset = 0) => {
         const column = location.column ?? 1;
-        const expected = levels[type] as number;
+        const expected = (levels[type] as number) + offset;
         if (column - 1 === expected) return;
         report({
           ...lineDiagnostic(document, location.line, "indentation", `Wrong indentation for "${type}", expected indentation level of ${expected}, but got ${column - 1}.`),
           fix: indentationFix(document, location.line, column, expected)
         });
       };
-      const testSteps = (steps: readonly Step[]) => {
+      const testSteps = (steps: readonly Step[], offset: number) => {
         for (const step of steps) {
           const key = keywordKey(step.keyword, document.language) ?? "";
-          test(step.location, key in configured ? key : "Step");
+          test(step.location, key in configured ? key : "Step", offset);
         }
       };
-      const testTags = (tags: readonly Tag[], type: string) => {
-        for (const line of tagsByLine(tags)) if (line[0]) test(line[0].location, type);
+      const testTags = (tags: readonly Tag[], type: string, offset = 0) => {
+        for (const line of tagsByLine(tags)) if (line[0]) test(line[0].location, type, offset);
       };
+      const testChild = (child: { background?: Background; scenario?: Scenario }, offset: number) => {
+        if (child.background) {
+          test(child.background.location, "Background", offset);
+          testSteps(child.background.steps, offset);
+        } else if (child.scenario) {
+          test(child.scenario.location, "Scenario", offset);
+          testTags(child.scenario.tags, "scenario tag", offset);
+          testSteps(child.scenario.steps, offset);
+          for (const examples of child.scenario.examples) {
+            test(examples.location, "Examples", offset);
+            if (!examples.tableHeader) continue;
+            test(examples.tableHeader.location, "example", offset);
+            for (const row of examples.tableBody) test(row.location, "example", offset);
+          }
+        }
+      };
+      const ruleContent = configured["rule content"];
       test(feature.location, "Feature");
       testTags(feature.tags, "feature tag");
       for (const child of feature.children) {
         if (child.rule) {
           test(child.rule.location, "Rule");
-        } else if (child.background) {
-          test(child.background.location, "Background");
-          testSteps(child.background.steps);
-        } else if (child.scenario) {
-          test(child.scenario.location, "Scenario");
-          testTags(child.scenario.tags, "scenario tag");
-          testSteps(child.scenario.steps);
-          for (const examples of child.scenario.examples) {
-            test(examples.location, "Examples");
-            if (!examples.tableHeader) continue;
-            test(examples.tableHeader.location, "example");
-            for (const row of examples.tableBody) test(row.location, "example");
-          }
+          if (ruleContent === undefined) continue;
+          for (const nested of child.rule.children) testChild(nested, ruleContent);
+        } else {
+          testChild(child, 0);
         }
       }
     }
@@ -491,6 +509,124 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
         const trailing = document.source.match(/(?:\r\n|\n|\r)+$/)?.[0] ?? "";
         report({ ...lineDiagnostic(document, line, "new-line-at-eof", "New line at EOF(end of file) is not allowed."), fix: { range: [document.source.length - trailing.length, document.source.length], text: "" } });
       }
+    }
+  },
+
+  "required-tags": {
+    meta: {
+      description: "Require every Scenario to have a tag matching each configured regular expression.",
+      category: "tags",
+      recommended: false,
+      defaultOptions: { tags: [], ignoreUntagged: true },
+      examples: ["Scenario without a @jira-123 tag"],
+      documentation: "docs/rules.md#required-tags"
+    },
+    validateOptions: (value: unknown): value is { tags?: string[]; ignoreUntagged?: boolean } =>
+      isRecord(value) && Object.keys(value).every((key) => key === "tags" || key === "ignoreUntagged")
+      && (value.ignoreUntagged === undefined || typeof value.ignoreUntagged === "boolean")
+      && (value.tags === undefined || (isStringArray(value.tags) && value.tags.every(isValidPattern))),
+    run({ document, options, report }) {
+      const { tags = [], ignoreUntagged = true } = options as { tags?: string[]; ignoreUntagged?: boolean };
+      const required = tags.map((pattern) => [pattern, new RegExp(pattern)] as const);
+      forEachScenario(document, (scenario) => {
+        if (ignoreUntagged && scenario.tags.length === 0) return;
+        for (const [pattern, expression] of required) {
+          if (scenario.tags.some((tag) => expression.test(tag.name))) continue;
+          report(lineDiagnostic(document, scenario.location.line, "required-tags", `No tag found matching ${pattern} for ${nodeType(scenario.keyword, document.language)}.`));
+        }
+      });
+    }
+  },
+
+  "no-restricted-patterns": {
+    meta: {
+      description: "Disallow case-insensitive regular expressions in Feature, Background, and Scenario names, descriptions, and steps.",
+      category: "naming",
+      recommended: false,
+      defaultOptions: {},
+      examples: ["Scenario: TODO write this"],
+      documentation: "docs/rules.md#no-restricted-patterns"
+    },
+    validateOptions: (value: unknown): value is Readonly<Record<string, string[]>> =>
+      isRecord(value) && Object.entries(value).every(([key, patterns]) => RESTRICTED_PATTERN_KEYS.has(key) && isStringArray(patterns) && patterns.every(isValidPattern)),
+    run({ document, options, report }) {
+      const feature = document.feature;
+      if (!feature) return;
+      const configured = options as Readonly<Record<string, readonly string[]>>;
+      const compile = (key: string) => [...(configured[key] ?? []), ...(configured.Global ?? [])].map((pattern) => new RegExp(pattern, "i"));
+      const patterns: Readonly<Record<string, readonly RegExp[]>> = {
+        feature: compile("Feature"), background: compile("Background"), scenario: compile("Scenario"), scenarioOutline: compile("ScenarioOutline"), rule: compile("Rule")
+      };
+      const check = (node: { keyword: string; location: { line: number } }, property: "name" | "description" | "text", value: string, expressions: readonly RegExp[]) => {
+        if (!value) return;
+        const lines = property === "description" ? value.split("\n") : [value];
+        for (const expression of expressions) {
+          for (const line of lines) {
+            if (!expression.test(line.trim())) continue;
+            const type = property === "text" ? "Step" : nodeType(node.keyword, document.language);
+            report(lineDiagnostic(document, node.location.line, "no-restricted-patterns", `${type} ${property}: "${line.trim()}" matches restricted pattern "${expression}".`));
+          }
+        }
+      };
+      const checkNode = (node: Feature | Rule | Background | Scenario) => {
+        const expressions = patterns[keywordKey(node.keyword, document.language) ?? ""] ?? [];
+        check(node, "name", node.name, expressions);
+        check(node, "description", node.description, expressions);
+        if ("steps" in node) for (const step of node.steps) check(step, "text", step.text, expressions);
+      };
+      checkNode(feature);
+      for (const child of feature.children) {
+        const node = child.background ?? child.scenario ?? child.rule;
+        if (node) checkNode(node);
+        for (const nested of child.rule?.children ?? []) {
+          const inner = nested.background ?? nested.scenario;
+          if (inner) checkNode(inner);
+        }
+      }
+    }
+  },
+
+  "max-scenarios-per-file": {
+    meta: {
+      description: "Limit the Scenarios in a file, counting each Examples row of an outline by default.",
+      category: "structure",
+      recommended: false,
+      defaultOptions: { maxScenarios: 10, countOutlineExamples: true },
+      examples: ["Feature with more than 10 Scenarios"],
+      documentation: "docs/rules.md#max-scenarios-per-file"
+    },
+    validateOptions: (value: unknown): value is { maxScenarios?: number; countOutlineExamples?: boolean } =>
+      isRecord(value) && Object.keys(value).every((key) => key === "maxScenarios" || key === "countOutlineExamples")
+      && (value.maxScenarios === undefined || (Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) >= 0))
+      && (value.countOutlineExamples === undefined || typeof value.countOutlineExamples === "boolean"),
+    run({ document, options, report }) {
+      if (!document.feature) return;
+      const { maxScenarios = 10, countOutlineExamples = true } = options as { maxScenarios?: number; countOutlineExamples?: boolean };
+      let count = 0;
+      forEachScenario(document, (scenario) => {
+        count += countOutlineExamples && scenario.examples.length > 0
+          ? scenario.examples.reduce((rows, examples) => rows + examples.tableBody.length, 0)
+          : 1;
+      });
+      if (count > maxScenarios) report(lineDiagnostic(document, 1, "max-scenarios-per-file", `Number of scenarios exceeds maximum: ${count}/${maxScenarios}.`));
+    }
+  },
+
+  "only-one-when": {
+    meta: {
+      description: "Allow at most one When step per Scenario.",
+      category: "structure",
+      recommended: false,
+      examples: ["When I pay\nWhen I cancel"],
+      documentation: "docs/rules.md#only-one-when"
+    },
+    run({ document, report }) {
+      forEachScenario(document, (scenario) => {
+        const whens = scenario.steps.filter((step) => keywordKey(step.keyword, document.language) === "when");
+        const second = whens[1];
+        if (!second) return;
+        report(lineDiagnostic(document, second.location.line, "only-one-when", `Scenario "${scenario.name}" contains ${whens.length} When statements (max 1).`));
+      });
     }
   },
 
