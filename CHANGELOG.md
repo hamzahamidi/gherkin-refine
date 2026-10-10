@@ -2,11 +2,9 @@
 
 ## 1.3.0 (2026-10-10)
 
-Supports every gherkin-lint 4.2.4 rule. Adds 18 rules under their gherkin-lint names: `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, `required-tags`, `no-restricted-patterns`, and `only-one-when`. Adds `no-homogeneous-tags`, which `migrate` maps from gherkin-lint's `no-homogenous-tags`, and a `countOutlineExamples` option on `feature-size`, which covers `max-scenarios-per-file`. The four formatting rules have safe autofixes. `name-length` accepts per-node limits, `no-duplicate-scenario-names` accepts `{ scope: "anywhere" }`, `indentation` can check content inside Rules, and `migrate --strict` fails on a lossy migration. Fixes gherkin-lint issues #159, #170, #231, #257, and #345.
-
-## 1.2.0 (2026-10-10)
-
 Makes gherkin-refine a drop-in replacement for gherkin-lint: installs a `gherkin-lint` command, reads `.gherkin-lintrc` from the working directory, accepts `-f`, `-i` and `-r`, and warns once per run about legacy rules it cannot fully check.
+
+Supports every gherkin-lint 4.2.4 rule. Adds 18 rules under their gherkin-lint names: `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, `required-tags`, `no-restricted-patterns`, and `only-one-when`. Adds `no-homogeneous-tags`, which `migrate` maps from gherkin-lint's `no-homogenous-tags`, and a `countOutlineExamples` option on `feature-size`, which covers `max-scenarios-per-file`. The four formatting rules have safe autofixes. `name-length` accepts per-node limits, `no-duplicate-scenario-names` accepts `{ scope: "anywhere" }`, `indentation` can check content inside Rules, and `migrate --strict` fails on a lossy migration. Fixes gherkin-lint issues #159, #170, #231, #257, and #345.
 
 ## 1.1.0 (2026-10-09)
 
