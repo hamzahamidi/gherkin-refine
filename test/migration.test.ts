@@ -89,6 +89,21 @@ describe("migrateLegacyConfig", () => {
     expect(result.unsupported).toEqual([]);
   });
 
+  it("maps renamed and merged gherkin-lint rules to their native rules", () => {
+    const result = migrateLegacyConfig({
+      "no-homogenous-tags": "on",
+      "max-scenarios-per-file": ["on", { maxScenarios: 5 }]
+    });
+    expect(result.config.rules).toEqual({
+      "no-homogeneous-tags": "error",
+      "feature-size": ["error", { maxScenarios: 5, countOutlineExamples: true }]
+    });
+    expect(migrateLegacyConfig({ "max-scenarios-per-file": "on" }).config.rules).toEqual({
+      "feature-size": ["error", { maxScenarios: 10, countOutlineExamples: true }]
+    });
+    expect(result.unsupported).toEqual([]);
+  });
+
   it("maps only the step limits that are present", () => {
     const backgroundOnly = migrateLegacyConfig({ "scenario-size": ["on", { "steps-length": { Background: 4 } }] });
     expect(backgroundOnly.config.rules).toEqual({ "background-size": ["error", { maxSteps: 4 }] });

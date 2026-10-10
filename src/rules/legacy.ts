@@ -363,13 +363,13 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
     }
   },
 
-  "no-homogenous-tags": {
+  "no-homogeneous-tags": {
     meta: {
       description: "Disallow a tag on every one of two or more Scenarios or Examples blocks where it belongs on the parent.",
       category: "tags",
       recommended: false,
       examples: ["@smoke on every Scenario"],
-      documentation: "docs/rules.md#no-homogenous-tags"
+      documentation: "docs/rules.md#no-homogeneous-tags"
     },
     run({ document, report }) {
       const feature = document.feature;
@@ -378,14 +378,14 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
         for (const scenario of scenarios) {
           if (scenario.examples.length < 2) continue;
           for (const tag of intersection(scenario.examples.map((examples) => examples.tags.map((item) => item.name)))) {
-            report(lineDiagnostic(document, scenario.location.line, "no-homogenous-tags",
+            report(lineDiagnostic(document, scenario.location.line, "no-homogeneous-tags",
               `Tag ${tag} is on every Examples block of this Scenario Outline; define it on the Scenario Outline instead.`));
           }
         }
         if (scenarios.length < 2) continue;
         const parent = node === feature ? "Feature" : "Rule";
         for (const tag of intersection(scenarios.map((scenario) => scenario.tags.map((item) => item.name)))) {
-          report(lineDiagnostic(document, node.location.line, "no-homogenous-tags", `Tag ${tag} is on every Scenario of this ${parent}; define it on the ${parent} instead.`));
+          report(lineDiagnostic(document, node.location.line, "no-homogeneous-tags", `Tag ${tag} is on every Scenario of this ${parent}; define it on the ${parent} instead.`));
         }
       }
     }
@@ -583,32 +583,6 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
           if (inner) checkNode(inner);
         }
       }
-    }
-  },
-
-  "max-scenarios-per-file": {
-    meta: {
-      description: "Limit the Scenarios in a file, counting each Examples row of an outline by default.",
-      category: "structure",
-      recommended: false,
-      defaultOptions: { maxScenarios: 10, countOutlineExamples: true },
-      examples: ["Feature with more than 10 Scenarios"],
-      documentation: "docs/rules.md#max-scenarios-per-file"
-    },
-    validateOptions: (value: unknown): value is { maxScenarios?: number; countOutlineExamples?: boolean } =>
-      isRecord(value) && Object.keys(value).every((key) => key === "maxScenarios" || key === "countOutlineExamples")
-      && (value.maxScenarios === undefined || (Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) >= 0))
-      && (value.countOutlineExamples === undefined || typeof value.countOutlineExamples === "boolean"),
-    run({ document, options, report }) {
-      if (!document.feature) return;
-      const { maxScenarios = 10, countOutlineExamples = true } = options as { maxScenarios?: number; countOutlineExamples?: boolean };
-      let count = 0;
-      forEachScenario(document, (scenario) => {
-        count += countOutlineExamples && scenario.examples.length > 0
-          ? scenario.examples.reduce((rows, examples) => rows + examples.tableBody.length, 0)
-          : 1;
-      });
-      if (count > maxScenarios) report(lineDiagnostic(document, 1, "max-scenarios-per-file", `Number of scenarios exceeds maximum: ${count}/${maxScenarios}.`));
     }
   },
 

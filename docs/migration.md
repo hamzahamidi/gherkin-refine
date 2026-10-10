@@ -28,12 +28,14 @@ Keep `.gherkin-lintignore`. gherkin-refine reads it from the working directory o
 | `keywords-in-logical-order` | `logical-keyword-order` | Uses parser semantic step types, including localized dialects |
 | `allowed-tags` | `allowed-tags` | Same `tags` and `patterns` options. Tags inside Rule blocks are also checked |
 | `no-restricted-tags` | `no-restricted-tags` | Same `tags` and `patterns` options. Tags inside Rule blocks are also checked |
-| `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `required-tags`, `no-restricted-patterns`, `max-scenarios-per-file` | Same names | Same options and findings. Each one except `file-name` has a safe autofix |
-| `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags`, `no-homogenous-tags` | Same names | Same findings. Except for `indentation`, rules that walk Scenarios also check the ones inside Rule blocks |
+| `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `required-tags`, `no-restricted-patterns` | Same names | Same options and findings. Each one except `file-name` has a safe autofix |
+| `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags` | Same names | Same findings. Except for `indentation`, rules that walk Scenarios also check the ones inside Rule blocks |
+| `no-homogenous-tags` | `no-homogeneous-tags` | Spelling corrected; see the fixes below |
+| `max-scenarios-per-file` | `feature-size` | Same count and options: `countOutlineExamples` defaults to `true` when migrated, `maxScenarios` to 10 |
 | `only-one-when` | `only-one-when` | `And` after `When` no longer counts as a second `When` ([gherkin-lint#345](https://github.com/gherkin-lint/gherkin-lint/issues/345)) |
 | Custom rules from `--rulesdir` | none | Reported as unsupported |
 
-Three rules fix gherkin-lint bugs and can only report less than before: `no-homogenous-tags` ignores a single Scenario or Examples block and reports one finding per tag ([#231](https://github.com/gherkin-lint/gherkin-lint/issues/231), [#257](https://github.com/gherkin-lint/gherkin-lint/issues/257), [#170](https://github.com/gherkin-lint/gherkin-lint/issues/170)), `no-background-only-scenario` ignores a Background without Scenarios ([#159](https://github.com/gherkin-lint/gherkin-lint/issues/159)), and `only-one-when` as above.
+Three rules fix gherkin-lint bugs and can only report less than before: `no-homogeneous-tags` ignores a single Scenario or Examples block and reports one finding per tag ([#231](https://github.com/gherkin-lint/gherkin-lint/issues/231), [#257](https://github.com/gherkin-lint/gherkin-lint/issues/257), [#170](https://github.com/gherkin-lint/gherkin-lint/issues/170)), `no-background-only-scenario` ignores a Background without Scenarios ([#159](https://github.com/gherkin-lint/gherkin-lint/issues/159)), and `only-one-when` as above.
 
 `migrate --strict` fails without writing a file when any rule cannot be fully migrated.
 

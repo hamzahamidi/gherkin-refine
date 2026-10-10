@@ -20,8 +20,9 @@ const duplicateScenarioOptions = (value: unknown): value is { scope?: "feature" 
 const scenarioSizeOptions = (value: unknown): value is { maxSteps: number } =>
   isRecord(value) && Number.isInteger(value.maxSteps) && Number(value.maxSteps) > 0;
 
-const featureSizeOptions = (value: unknown): value is { maxScenarios: number } =>
-  isRecord(value) && Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) > 0;
+const featureSizeOptions = (value: unknown): value is { maxScenarios: number; countOutlineExamples?: boolean } =>
+  isRecord(value) && Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) > 0
+  && (value.countOutlineExamples === undefined || typeof value.countOutlineExamples === "boolean");
 
 const tagPatternOptions = (value: unknown): value is { pattern: string } => {
   if (!isRecord(value) || typeof value.pattern !== "string") return false;
@@ -247,7 +248,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
 
   "feature-size": {
     meta: {
-      description: "Limit the number of Scenarios in a Feature, including Scenarios under Rules.",
+      description: "Limit the number of Scenarios in a Feature, including Scenarios under Rules, optionally counting each Examples row.",
       category: "structure",
       recommended: false,
       defaultOptions: { maxScenarios: 20 },
@@ -258,9 +259,13 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
+      const { maxScenarios, countOutlineExamples = false } = options as { maxScenarios: number; countOutlineExamples?: boolean };
       let count = 0;
-      forEachScenario(document, () => { count += 1; });
-      const { maxScenarios } = options as { maxScenarios: number };
+      forEachScenario(document, (scenario) => {
+        count += countOutlineExamples && scenario.examples.length > 0
+          ? scenario.examples.reduce((rows, examples) => rows + examples.tableBody.length, 0)
+          : 1;
+      });
       if (count > maxScenarios) {
         report(lineDiagnostic(document, feature.location.line, "feature-size", `Feature contains ${count} Scenarios; configured maximum is ${maxScenarios}.`));
       }

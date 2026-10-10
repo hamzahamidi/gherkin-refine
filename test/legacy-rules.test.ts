@@ -116,13 +116,13 @@ Feature: F
     Scenario: three
       Given z
 `;
-    expect((await lint(source, { "no-homogenous-tags": "error" })).map((item) => [item.start.line, item.message])).toEqual([
+    expect((await lint(source, { "no-homogeneous-tags": "error" })).map((item) => [item.start.line, item.message])).toEqual([
       [1, "Tag @t is on every Scenario of this Feature; define it on the Feature instead."],
       [3, "Tag @e is on every Examples block of this Scenario Outline; define it on the Scenario Outline instead."]
     ]);
-    expect(await lines("@f\nFeature: F\n  @only\n  Scenario: one\n    Given x\n", "no-homogenous-tags")).toEqual([]);
+    expect(await lines("@f\nFeature: F\n  @only\n  Scenario: one\n    Given x\n", "no-homogeneous-tags")).toEqual([]);
     const twoTags = "Feature: F\n  @a @b\n  Scenario: one\n    Given x\n  @b @a\n  Scenario: two\n    Given y\n";
-    expect((await lint(twoTags, { "no-homogenous-tags": "error" })).map((item) => item.message)).toEqual([
+    expect((await lint(twoTags, { "no-homogeneous-tags": "error" })).map((item) => item.message)).toEqual([
       "Tag @a is on every Scenario of this Feature; define it on the Feature instead.",
       "Tag @b is on every Scenario of this Feature; define it on the Feature instead."
     ]);
@@ -197,8 +197,8 @@ Feature: F
 
   it("counts Scenarios per file, expanding outline rows unless disabled", async () => {
     const source = "Feature: F\n  Scenario: a\n    Given x\n  Scenario Outline: b\n    Given <x>\n    Examples:\n      | x |\n      | 1 |\n      | 2 |\n";
-    expect((await lint(source, { "max-scenarios-per-file": ["error", { maxScenarios: 2 }] }))[0]?.message).toBe("Number of scenarios exceeds maximum: 3/2.");
-    expect(await lines(source, "max-scenarios-per-file", ["error", { maxScenarios: 2, countOutlineExamples: false }])).toEqual([]);
+    expect((await lint(source, { "feature-size": ["error", { maxScenarios: 2, countOutlineExamples: true }] }))[0]?.message).toBe("Feature contains 3 Scenarios; configured maximum is 2.");
+    expect(await lines(source, "feature-size", ["error", { maxScenarios: 2 }])).toEqual([]);
   });
 
   it("allows one explicit When and does not count And after When", async () => {
@@ -236,8 +236,8 @@ Feature: F
     const rules = Object.fromEntries([
       "no-unnamed-features", "no-unnamed-scenarios", "no-scenario-outlines-without-examples", "no-examples-in-scenarios", "no-empty-file",
       "no-files-without-scenarios", "no-empty-background", "no-background-only-scenario", "no-partially-commented-tag-lines",
-      "one-space-between-tags", "no-superfluous-tags", "no-homogenous-tags", "use-and", "indentation",
-      "required-tags", "no-restricted-patterns", "max-scenarios-per-file", "only-one-when"
+      "one-space-between-tags", "no-superfluous-tags", "no-homogeneous-tags", "use-and", "indentation",
+      "required-tags", "no-restricted-patterns", "only-one-when"
     ].map((id) => [id, "error" as const]));
     expect((await lint(source, rules)).map((item) => item.ruleId)).toEqual(["no-empty-file", "no-unnamed-features"]);
   });
@@ -257,7 +257,7 @@ Feature: F
 `;
     expect(await lines(source, "use-and")).toEqual([4, 8]);
     expect(await lines(source, "no-superfluous-tags")).toEqual([]);
-    expect(await lines(source, "no-homogenous-tags")).toEqual([]);
+    expect(await lines(source, "no-homogeneous-tags")).toEqual([]);
     expect(await lines("Feature: F\nScenario Outline: S\n  Given <x>\nExamples:\n", "indentation")).toEqual([]);
     expect(await lines("Feature: F\n", "file-name", ["error", {}], "features/Checkout.feature")).toEqual([]);
     expect(await lines("Feature: F\n", "file-name", "error", "features/checkout.feature")).toEqual([1]);
@@ -267,8 +267,7 @@ Feature: F
     ["indentation", { Step: -1 }], ["indentation", { Unknown: 2 }], ["indentation", "two"],
     ["new-line-at-eof", "maybe"], ["file-name", { style: "SCREAMING" }], ["file-name", { case: "camelCase" }],
     ["indentation", { "rule content": "2" }], ["required-tags", { tags: ["("] }], ["required-tags", { ignoreUntagged: "yes" }],
-    ["no-restricted-patterns", { Step: ["x"] }], ["no-restricted-patterns", { Global: ["("] }], ["max-scenarios-per-file", { maxScenarios: -1 }],
-    ["max-scenarios-per-file", { countOutlineExamples: 1 }], ["name-length", { max: 10, Step: 5 }], ["name-length", { Background: 5 }],
+    ["no-restricted-patterns", { Step: ["x"] }], ["no-restricted-patterns", { Global: ["("] }], ["feature-size", { maxScenarios: 2, countOutlineExamples: 1 }], ["name-length", { max: 10, Step: 5 }], ["name-length", { Background: 5 }],
     ["no-duplicate-scenario-names", { scope: "everywhere" }]
   ])("rejects invalid options for %s: %j", async (rule, options) => {
     await expect(lintText("Feature: F\n", { config: { extends: [], rules: { [rule]: ["error", options] } } })).rejects.toThrow("Invalid options for rule");
@@ -292,7 +291,7 @@ Feature: F
       Given y
 `;
     expect(await lines(source, "no-superfluous-tags")).toEqual([]);
-    expect((await lint(source, { "no-homogenous-tags": "error" })).map((item) => [item.start.line, item.message])).toEqual([
+    expect((await lint(source, { "no-homogeneous-tags": "error" })).map((item) => [item.start.line, item.message])).toEqual([
       [5, "Tag @r is on every Scenario of this Rule; define it on the Rule instead."]
     ]);
     expect((await lint(source, { "no-restricted-patterns": ["error", { Rule: ["draft"], Background: ["draft"] }] })).map((item) => [item.start.line, item.message])).toEqual([

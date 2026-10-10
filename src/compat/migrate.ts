@@ -113,7 +113,9 @@ function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] 
     "name-length": "name-length",
     "allowed-tags": "allowed-tags",
     "no-restricted-tags": "no-restricted-tags",
-    ...Object.fromEntries(Object.keys(legacyRules).map((id) => [id, id]))
+    ...Object.fromEntries(Object.keys(legacyRules).map((id) => [id, id])),
+    "no-homogenous-tags": "no-homogeneous-tags",
+    "max-scenarios-per-file": "feature-size"
   };
   const newId = direct[oldId];
   if (!newId) return undefined;
@@ -135,6 +137,13 @@ function mapLegacyRule(oldId: string, options: unknown): readonly RuleMapping[] 
   }
   if (oldId === "no-dupe-scenario-names") {
     return options === "in-feature" ? [[newId, undefined, "scope now includes the enclosing Rule"]] : [[newId, { scope: "anywhere" }]];
+  }
+  if (oldId === "max-scenarios-per-file") {
+    const value = isRecord(options) ? options : {};
+    return [[newId, {
+      maxScenarios: Number.isInteger(value.maxScenarios) ? value.maxScenarios : 10,
+      countOutlineExamples: typeof value.countOutlineExamples === "boolean" ? value.countOutlineExamples : true
+    }]];
   }
   if (oldId === "allowed-tags" || oldId === "no-restricted-tags") {
     return [[newId, options, "scope now includes tags inside Rule blocks"]];
