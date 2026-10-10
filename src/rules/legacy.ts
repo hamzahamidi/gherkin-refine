@@ -3,7 +3,7 @@ import type { Background, Examples, Feature, Rule, Scenario, Step, Tag } from "@
 import { basename } from "node:path";
 import { forEachScenario } from "../parser/document.js";
 import type { LintDocument, RuleModule } from "../types.js";
-import { featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic } from "./helpers.js";
+import { featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic, ruleDocs } from "./helpers.js";
 
 const INDENTATION_DEFAULTS: Readonly<Record<string, number>> = {
   Feature: 0,
@@ -143,7 +143,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "naming",
       recommended: false,
       examples: ["Feature:"],
-      documentation: "docs/rules.md#no-unnamed-features"
+      documentation: ruleDocs("no-unnamed-features")
     },
     run({ document, report }) {
       if (document.feature?.name) return;
@@ -157,7 +157,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "naming",
       recommended: false,
       examples: ["Scenario:"],
-      documentation: "docs/rules.md#no-unnamed-scenarios"
+      documentation: ruleDocs("no-unnamed-scenarios")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -172,7 +172,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: false,
       examples: ["Scenario Outline: never runs"],
-      documentation: "docs/rules.md#no-scenario-outlines-without-examples"
+      documentation: ruleDocs("no-scenario-outlines-without-examples")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -189,7 +189,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "structure",
       recommended: false,
       examples: ["Scenario: with Examples"],
-      documentation: "docs/rules.md#no-examples-in-scenarios"
+      documentation: ruleDocs("no-examples-in-scenarios")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -205,7 +205,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: false,
       examples: ["# only a comment"],
-      documentation: "docs/rules.md#no-empty-file"
+      documentation: ruleDocs("no-empty-file")
     },
     run({ document, report }) {
       if (!document.feature) report(lineDiagnostic(document, 1, "no-empty-file", "Empty feature files are disallowed."));
@@ -218,7 +218,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: false,
       examples: ["Feature: nothing to run"],
-      documentation: "docs/rules.md#no-files-without-scenarios"
+      documentation: ruleDocs("no-files-without-scenarios")
     },
     run({ document, report }) {
       const feature = document.feature;
@@ -234,7 +234,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: false,
       examples: ["Background:"],
-      documentation: "docs/rules.md#no-empty-background"
+      documentation: ruleDocs("no-empty-background")
     },
     run({ document, report }) {
       const feature = document.feature;
@@ -255,7 +255,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "structure",
       recommended: false,
       examples: ["Background: shared by one Scenario"],
-      documentation: "docs/rules.md#no-background-only-scenario"
+      documentation: ruleDocs("no-background-only-scenario")
     },
     run({ document, report }) {
       const feature = document.feature;
@@ -281,7 +281,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "tags",
       recommended: false,
       examples: ["@smoke # @wip"],
-      documentation: "docs/rules.md#no-partially-commented-tag-lines"
+      documentation: ruleDocs("no-partially-commented-tag-lines")
     },
     run({ document, report }) {
       if (!document.feature) return;
@@ -304,7 +304,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       fixable: true,
       examples: ["@smoke   @wip"],
-      documentation: "docs/rules.md#one-space-between-tags"
+      documentation: ruleDocs("one-space-between-tags")
     },
     run({ document, report }) {
       if (!document.feature) return;
@@ -330,7 +330,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "tags",
       recommended: false,
       examples: ["@smoke Feature with @smoke Scenario"],
-      documentation: "docs/rules.md#no-superfluous-tags"
+      documentation: ruleDocs("no-superfluous-tags")
     },
     run({ document, report }) {
       const feature = document.feature;
@@ -369,7 +369,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "tags",
       recommended: false,
       examples: ["@smoke on every Scenario"],
-      documentation: "docs/rules.md#no-homogeneous-tags"
+      documentation: ruleDocs("no-homogeneous-tags")
     },
     run({ document, report }) {
       const feature = document.feature;
@@ -398,7 +398,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       fixable: true,
       examples: ["Given a cart\nGiven a coupon"],
-      documentation: "docs/rules.md#use-and"
+      documentation: ruleDocs("use-and")
     },
     run({ document, report }) {
       if (!document.feature) return;
@@ -429,7 +429,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       fixable: true,
       defaultOptions: {},
       examples: ["   Scenario: shifted"],
-      documentation: "docs/rules.md#indentation"
+      documentation: ruleDocs("indentation")
     },
     validateOptions: (value: unknown): value is Record<string, number> =>
       isRecord(value) && Object.entries(value).every(([key, level]) => INDENTATION_KEYS.has(key) && Number.isInteger(level) && Number(level) >= 0),
@@ -497,7 +497,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       fixable: true,
       defaultOptions: "yes",
       examples: ["Feature: no final line break"],
-      documentation: "docs/rules.md#new-line-at-eof"
+      documentation: ruleDocs("new-line-at-eof")
     },
     validateOptions: (value: unknown): value is "yes" | "no" => value === "yes" || value === "no",
     run({ document, options, report }) {
@@ -519,7 +519,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { tags: [], ignoreUntagged: true },
       examples: ["Scenario without a @jira-123 tag"],
-      documentation: "docs/rules.md#required-tags"
+      documentation: ruleDocs("required-tags")
     },
     validateOptions: (value: unknown): value is { tags?: string[]; ignoreUntagged?: boolean } =>
       isRecord(value) && Object.keys(value).every((key) => key === "tags" || key === "ignoreUntagged")
@@ -545,7 +545,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: {},
       examples: ["Scenario: TODO write this"],
-      documentation: "docs/rules.md#no-restricted-patterns"
+      documentation: ruleDocs("no-restricted-patterns")
     },
     validateOptions: (value: unknown): value is Readonly<Record<string, string[]>> =>
       isRecord(value) && Object.entries(value).every(([key, patterns]) => RESTRICTED_PATTERN_KEYS.has(key) && isStringArray(patterns) && patterns.every(isValidPattern)),
@@ -592,7 +592,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "structure",
       recommended: false,
       examples: ["When I pay\nWhen I cancel"],
-      documentation: "docs/rules.md#only-one-when"
+      documentation: ruleDocs("only-one-when")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -611,7 +611,7 @@ export const legacyRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { style: "PascalCase" },
       examples: ["checkout_flow.feature with PascalCase"],
-      documentation: "docs/rules.md#file-name"
+      documentation: ruleDocs("file-name")
     },
     validateOptions: (value: unknown): value is { style: string } =>
       isRecord(value) && Object.keys(value).every((key) => key === "style") && (value.style === undefined || (typeof value.style === "string" && value.style in FILE_NAME_STYLES)),

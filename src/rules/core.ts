@@ -2,7 +2,7 @@ import { StepKeywordType } from "@cucumber/messages";
 import type { LintDocument, ProjectRuleModule, RuleFix, RuleModule } from "../types.js";
 import type { Scenario, Tag } from "@cucumber/messages";
 import { forEachScenario, forEachStep } from "../parser/document.js";
-import { featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic } from "./helpers.js";
+import { DOCS_URL, featureTags, isRecord, isStringArray, lineDiagnostic, rangeDiagnostic, ruleDocs } from "./helpers.js";
 import { legacyRules } from "./legacy.js";
 
 const NAME_LENGTH_KEYS = ["Feature", "Rule", "Scenario", "Step"] as const;
@@ -110,7 +110,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: false,
       examples: ["# gherkin-refine-disable-next-line name-length -- legacy title"],
-      documentation: "docs/configuration.md#inline-suppression"
+      documentation: `${DOCS_URL}/configuration#inline-suppression`
     },
     run() {}
   },
@@ -121,7 +121,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: true,
       examples: ["Feature: Login\n  @smoke @smoke\n  Scenario: valid login"],
-      documentation: "docs/rules.md#no-duplicate-tags"
+      documentation: ruleDocs("no-duplicate-tags")
     },
     run({ document, report }) {
       for (const group of tagGroups(document)) {
@@ -145,7 +145,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: true,
       examples: ["Scenario Outline: lookup\n  Given <id> exists\n  Examples:\n    | id | unused |"],
-      documentation: "docs/rules.md#no-unused-outline-variables"
+      documentation: ruleDocs("no-unused-outline-variables")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -169,7 +169,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "correctness",
       recommended: true,
       examples: ["Scenario Outline: lookup\n  Given <missing> exists\n  Examples:\n    | id |"],
-      documentation: "docs/rules.md#no-undefined-outline-variables"
+      documentation: ruleDocs("no-undefined-outline-variables")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -205,7 +205,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { maxSteps: 12 },
       examples: ["Scenario: long flow\n  Given one\n  When two\n  Then three"],
-      documentation: "docs/rules.md#scenario-size"
+      documentation: ruleDocs("scenario-size")
     },
     validateOptions: scenarioSizeOptions,
     run({ document, options, report }) {
@@ -225,7 +225,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { maxSteps: 5 },
       examples: ["Rule: Coupon\n  Background:\n    Given many shared steps"],
-      documentation: "docs/rules.md#background-size"
+      documentation: ruleDocs("background-size")
     },
     validateOptions: scenarioSizeOptions,
     run({ document, options, report }) {
@@ -253,7 +253,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { maxScenarios: 20 },
       examples: ["Feature: Large workflow with more than the configured number of scenarios"],
-      documentation: "docs/rules.md#feature-size"
+      documentation: ruleDocs("feature-size")
     },
     validateOptions: featureSizeOptions,
     run({ document, options, report }) {
@@ -279,7 +279,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { max: 80 },
       examples: ["Scenario: A name longer than the configured maximum"],
-      documentation: "docs/rules.md#name-length"
+      documentation: ruleDocs("name-length")
     },
     validateOptions: nameLengthOptions,
     run({ document, options, report }) {
@@ -308,7 +308,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { pattern: "^@[a-z0-9][a-z0-9_-]*$" },
       examples: ["@BadTag"],
-      documentation: "docs/rules.md#tag-pattern"
+      documentation: ruleDocs("tag-pattern")
     },
     validateOptions: tagPatternOptions,
     run({ document, options, report }) {
@@ -331,7 +331,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { tags: [], patterns: [] },
       examples: ["@unlisted"],
-      documentation: "docs/rules.md#allowed-tags"
+      documentation: ruleDocs("allowed-tags")
     },
     validateOptions: tagListOptions,
     run({ document, options, report }) {
@@ -351,7 +351,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       defaultOptions: { tags: [], patterns: [] },
       examples: ["@wip"],
-      documentation: "docs/rules.md#no-restricted-tags"
+      documentation: ruleDocs("no-restricted-tags")
     },
     validateOptions: tagListOptions,
     run({ document, options, report }) {
@@ -370,7 +370,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       category: "structure",
       recommended: false,
       examples: ["Then the user is signed in\nWhen the user opens the account page"],
-      documentation: "docs/rules.md#logical-keyword-order"
+      documentation: ruleDocs("logical-keyword-order")
     },
     run({ document, report }) {
       forEachScenario(document, (scenario) => {
@@ -396,7 +396,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       fixable: true,
       examples: ["Feature: title   "],
-      documentation: "docs/rules.md#no-trailing-whitespace"
+      documentation: ruleDocs("no-trailing-whitespace")
     },
     run({ document, report }) {
       const protectedLines = docStringContentLines(document);
@@ -421,7 +421,7 @@ export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
       recommended: false,
       fixable: true,
       examples: ["Feature: title\n\n\nScenario: one"],
-      documentation: "docs/rules.md#no-extra-blank-lines"
+      documentation: ruleDocs("no-extra-blank-lines")
     },
     run({ document, report }) {
       let blankCount = 0;
@@ -460,7 +460,7 @@ export const projectRules: Readonly<Record<string, ProjectRuleModule<unknown>>> 
       category: "correctness",
       recommended: true,
       examples: ["Feature: Repeated title in a second file"],
-      documentation: "docs/rules.md#no-duplicate-feature-names"
+      documentation: ruleDocs("no-duplicate-feature-names")
     },
     run({ documents, report }) {
       const seen = new Map<string, LintDocument>();
@@ -491,7 +491,7 @@ export const projectRules: Readonly<Record<string, ProjectRuleModule<unknown>>> 
       category: "correctness",
       recommended: true,
       examples: ["Rule: Coupon\n  Scenario: apply\n  Scenario: apply"],
-      documentation: "docs/rules.md#no-duplicate-scenario-names"
+      documentation: ruleDocs("no-duplicate-scenario-names")
     },
     validateOptions: duplicateScenarioOptions,
     run({ documents, options, report }) {

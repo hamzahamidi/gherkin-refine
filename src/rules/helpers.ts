@@ -1,6 +1,12 @@
 import type { Feature, Tag } from "@cucumber/messages";
 import type { LintDocument, RuleFix } from "../types.js";
 
+export const DOCS_URL = "https://hamidihamza.com/gherkin-refine";
+
+export function ruleDocs(id: string): string {
+  return `${DOCS_URL}/rules/${id}`;
+}
+
 export function featureTags(feature: Feature): readonly Tag[] {
   return [
     ...feature.tags,

@@ -4,3 +4,5 @@ coverage/
 .gherkin-refinecache/
 *.tgz
 compatibility-report.json
+docs/.vitepress/cache/
+docs/.vitepress/dist/
