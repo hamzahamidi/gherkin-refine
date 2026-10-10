@@ -26,6 +26,8 @@ npx gherkin-refine .
 
 The `gherkinlint` command remains available as a compatibility alias.
 
+Coming from gherkin-lint, replace the dependency and keep your scripts: the package also installs a `gherkin-lint` command and reads `.gherkin-lintrc` and `.gherkin-lintignore`. See [migration](docs/migration.md).
+
 To use `gherkinlint` as the package import name in a project, install a local npm alias with `npm install --save-dev gherkinlint@npm:gherkin-refine`. This alias is specific to that project. The public package name remains `gherkin-refine`.
 
 The CLI discovers `*.feature` files and ignores `.git`, `node_modules`, `dist`, and `coverage` while scanning directories. A directly named file is always linted. An explicitly named symlink to a file or directory is followed. Nested symlinked directories are not traversed.

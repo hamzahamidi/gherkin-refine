@@ -116,6 +116,7 @@ export interface LintOptions {
   readonly maxWarnings?: number;
   readonly absolutePaths?: boolean;
   readonly concurrency?: number;
+  readonly ignorePatterns?: readonly string[];
 }
 
 export interface FileResult {

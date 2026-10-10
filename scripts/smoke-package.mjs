@@ -87,6 +87,7 @@ assert.equal(result.tool.name, "gherkin-refine");
   assert.equal(manifest.type, "module");
   assert.equal(manifest.bin["gherkin-refine"], "./dist/cli.js");
   assert.equal(manifest.bin.gherkinlint, "./dist/cli.js");
+  assert.equal(manifest.bin["gherkin-lint"], "./dist/cli.js");
   process.stdout.write("package smoke passed\n");
 } finally {
   await rm(temporary, { recursive: true, force: true });

@@ -1,6 +1,8 @@
 # Migration from gherkin-lint
 
-The historical `.gherkin-lintrc` file is JSON and may contain comments. Run:
+Replace the `gherkin-lint` dependency with `gherkin-refine`. The package installs a `gherkin-lint` command, reads `.gherkin-lintrc` and `.gherkin-lintignore` from the working directory, and accepts the gherkin-lint flags below, so existing scripts keep working. A `.gherkin-lintrc` runs only the rules it lists. When it lists rules that gherkin-refine cannot fully check, each run prints one warning line on stderr.
+
+To review those differences, or to move to a native configuration, convert the file. The historical `.gherkin-lintrc` file is JSON and may contain comments. Run:
 
 ```sh
 gherkin-refine migrate .gherkin-lintrc --dry-run
@@ -34,9 +36,7 @@ This is a migration aid, not a compatibility mode. Review output because the for
 
 | gherkin-lint | gherkin-refine |
 | --- | --- |
-| `-c, --config` | `-c, --config` |
-| `-f, --format` | `--format`. `xunit` has no equivalent; `json`, `ndjson`, and `sarif` are available |
-| `-i, --ignore` | `ignores` in the configuration, or `.gherkin-lintignore` |
-| `-r, --rulesdir` | `plugins` in the configuration. See [plugins](plugins.md) |
-
-A `--rulesdir` that points at feature files loads no rules in gherkin-lint, so drop it.
+| `-c, --config` | `-c, --config`, including a path to a `.gherkin-lintrc` |
+| `-f, --format` | `-f, --format`. `xunit` has no equivalent; `json`, `ndjson`, and `sarif` are available |
+| `-i, --ignore` | `-i, --ignore`. The comma-separated patterns replace `.gherkin-lintignore` |
+| `-r, --rulesdir` | `-r, --rulesdir`. A directory without `.js` files is accepted; custom rules must be ported to a [plugin](plugins.md) |

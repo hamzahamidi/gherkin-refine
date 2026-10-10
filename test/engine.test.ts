@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { formatResult, lintFiles, lintText } from "../src/index.js";
 import { LintExecutionError } from "../src/core/engine.js";
-import { ConfigError } from "../src/config/index.js";
+import { ConfigError, loadConfig } from "../src/config/index.js";
 import { migrateLegacyConfig } from "../src/compat/migrate.js";
 
 const temporaryDirectories: string[] = [];
@@ -411,6 +411,59 @@ describe("lintFiles", () => {
     const result = await lintFiles(["."], { cwd, config: { extends: [] } });
 
     expect(result.results.map((item) => item.filePath)).toEqual(["features/a.feature"]);
+  });
+
+  it("runs the rules of a .gherkin-lintrc in the working directory without the recommended preset", async () => {
+    const cwd = await tempDirectory();
+    await writeFile(join(cwd, ".gherkin-lintrc"), `{
+      // legacy comment
+      "no-trailing-spaces": "on",
+      "indentation": "on"
+    }`);
+    await writeFile(join(cwd, "one.feature"), "Feature: F \n  Scenario: S\n  Scenario: S\n");
+
+    const result = await lintFiles(["."], { cwd });
+
+    expect(result.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual(["no-trailing-whitespace"]);
+  });
+
+  it("prefers a native configuration and ignores a .gherkin-lintrc outside the working directory", async () => {
+    const root = await tempDirectory();
+    const cwd = join(root, "package");
+    await mkdir(cwd);
+    await writeFile(join(root, ".gherkin-lintrc"), JSON.stringify({ "no-trailing-spaces": "on" }));
+    await writeFile(join(cwd, "one.feature"), "Feature: F \n");
+    expect((await lintFiles(["."], { cwd })).summary.errors).toBe(0);
+
+    await writeFile(join(cwd, ".gherkin-lintrc"), JSON.stringify({ "no-trailing-spaces": "on" }));
+    expect((await lintFiles(["."], { cwd })).summary.errors).toBe(1);
+
+    await writeFile(join(cwd, "gherkin-refine.config.json"), JSON.stringify({ extends: [] }));
+    expect((await lintFiles(["."], { cwd })).summary.errors).toBe(0);
+  });
+
+  it("reports legacy rules that are not fully checked and loads an explicit .gherkin-lintrc", async () => {
+    const cwd = await tempDirectory();
+    const configPath = join(cwd, "config", ".gherkin-lintrc");
+    await mkdir(join(cwd, "config"));
+    await writeFile(configPath, JSON.stringify({ "indentation": "on", "use-and": "on", "name-length": "on", "no-duplicate-tags": "on" }));
+
+    const loaded = await loadConfig(cwd, "config/.gherkin-lintrc");
+
+    expect(loaded.legacyUnsupported).toEqual(["indentation", "use-and", "name-length"]);
+    expect(loaded.config.rules?.["no-duplicate-tags"]).toBe("error");
+    expect((await loadConfig(cwd)).legacyUnsupported).toBeUndefined();
+  });
+
+  it("replaces .gherkin-lintignore with explicit ignore patterns", async () => {
+    const cwd = await tempDirectory();
+    await writeFile(join(cwd, "a.feature"), "Feature: A\n");
+    await writeFile(join(cwd, "b.feature"), "Feature: B\n");
+    await writeFile(join(cwd, ".gherkin-lintignore"), "a.feature\n");
+
+    const result = await lintFiles(["."], { cwd, config: { extends: [] }, ignorePatterns: ["b.feature"] });
+
+    expect(result.results.map((item) => item.filePath)).toEqual(["a.feature"]);
   });
 
   it("reports an unreadable .gherkin-lintignore as a configuration error", async () => {

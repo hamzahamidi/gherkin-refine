@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 (2026-10-10)
+
+Makes gherkin-refine a drop-in replacement for gherkin-lint: installs a `gherkin-lint` command, reads `.gherkin-lintrc` from the working directory, accepts `-f`, `-i` and `-r`, and warns once per run about legacy rules it cannot fully check.
+
 ## 1.1.0 (2026-10-09)
 
 Adds the `allowed-tags` and `no-restricted-tags` rules and reads `.gherkin-lintignore` from the working directory. Brings `migrate` output closer to gherkin-lint results: the generated configuration disables the recommended preset, maps Background limits to `background-size`, and uses gherkin-lint defaults for size limits.

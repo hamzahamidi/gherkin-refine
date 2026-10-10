@@ -18,15 +18,7 @@ export async function migrateLegacyFile(
   inputPath: string,
   options: { readonly outputPath?: string; readonly dryRun?: boolean; readonly force?: boolean } = {}
 ): Promise<MigrationResult> {
-  const source = await readFile(inputPath, "utf8");
-  let legacy: unknown;
-  try {
-    legacy = JSON.parse(stripJsonComments(source));
-  } catch (error) {
-    throw new ConfigError(`Legacy configuration must contain valid JSON with optional comments: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
-  }
-  if (!isRecord(legacy)) throw new ConfigError("Legacy configuration must be a JSON object.");
-  const result = migrateLegacyConfig(legacy);
+  const result = migrateLegacyConfig(parseLegacyConfig(await readFile(inputPath, "utf8")));
   if (!options.dryRun) {
     const outputPath = resolve(options.outputPath ?? "gherkin-refine.config.json");
     if (!options.force) {
@@ -40,6 +32,17 @@ export async function migrateLegacyFile(
     await writeFile(outputPath, result.content, { encoding: "utf8", flag: options.force ? "w" : "wx" });
   }
   return result;
+}
+
+export function parseLegacyConfig(source: string): Readonly<Record<string, unknown>> {
+  let legacy: unknown;
+  try {
+    legacy = JSON.parse(stripJsonComments(source));
+  } catch (error) {
+    throw new ConfigError(`Legacy configuration must contain valid JSON with optional comments: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+  if (!isRecord(legacy)) throw new ConfigError("Legacy configuration must be a JSON object.");
+  return legacy;
 }
 
 export function migrateLegacyConfig(legacy: Readonly<Record<string, unknown>>): MigrationResult {

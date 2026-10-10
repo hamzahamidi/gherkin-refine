@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { minimatch } from "minimatch";
 import type {
@@ -12,6 +12,7 @@ import type {
   Severity
 } from "../types.js";
 import { fileRules, projectRules, recommendedRules } from "../rules/core.js";
+import { migrateLegacyConfig, parseLegacyConfig } from "../compat/migrate.js";
 
 export class ConfigError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -25,7 +26,14 @@ export interface LoadedConfig {
   readonly fileRules: ReadonlyMap<string, RuleModule<unknown>>;
   readonly projectRules: ReadonlyMap<string, ProjectRuleModule<unknown>>;
   readonly pluginNames: ReadonlyMap<string, string>;
+  readonly legacyUnsupported?: readonly string[];
 }
+
+export interface LoadConfigOptions {
+  readonly ignorePatterns?: readonly string[];
+}
+
+const LEGACY_CONFIG_FILE = ".gherkin-lintrc";
 
 export interface EffectiveConfig {
   readonly rules: ReadonlyMap<string, Readonly<{ severity: Severity; options: unknown }>>;
@@ -47,13 +55,17 @@ export function defineConfig<T extends LintConfig>(config: T): T {
   return config;
 }
 
-export async function loadConfig(cwd: string, explicitPath?: string): Promise<LoadedConfig> {
+export async function loadConfig(cwd: string, explicitPath?: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> {
   const configPath = explicitPath ? resolve(cwd, explicitPath) : await findConfig(cwd);
   let config: LintConfig = {};
+  let legacyUnsupported: readonly string[] | undefined;
   if (configPath) {
     try {
-      if (extname(configPath) === ".json") {
-        const { readFile } = await import("node:fs/promises");
+      if (basename(configPath) === LEGACY_CONFIG_FILE) {
+        const migrated = migrateLegacyConfig(parseLegacyConfig(await readFile(configPath, "utf8")));
+        config = migrated.config;
+        legacyUnsupported = [...new Set(migrated.unsupported.map((item) => item.slice(0, item.indexOf(":"))))];
+      } else if (extname(configPath) === ".json") {
         config = JSON.parse(await readFile(configPath, "utf8")) as LintConfig;
       } else {
         const loaded = await import(pathToFileURL(configPath).href);
@@ -63,10 +75,16 @@ export async function loadConfig(cwd: string, explicitPath?: string): Promise<Lo
       throw new ConfigError(`Could not load configuration ${configPath}: ${messageOf(error)}`, { cause: error });
     }
   }
-  return loadConfigObject(cwd, config, configPath ? dirname(configPath) : cwd);
+  const loaded = await loadConfigObject(cwd, config, configPath ? dirname(configPath) : cwd, options);
+  return legacyUnsupported && legacyUnsupported.length > 0 ? { ...loaded, legacyUnsupported } : loaded;
 }
 
-export async function loadConfigObject(cwd: string, input: LintConfig, pluginResolutionDirectory = cwd): Promise<LoadedConfig> {
+export async function loadConfigObject(
+  cwd: string,
+  input: LintConfig,
+  pluginResolutionDirectory = cwd,
+  options: LoadConfigOptions = {}
+): Promise<LoadedConfig> {
   validateConfigShape(input);
   const pluginSpecifiers = input.plugins ?? [];
   if (!Array.isArray(pluginSpecifiers) || !pluginSpecifiers.every((item) => typeof item === "string")) {
@@ -95,7 +113,7 @@ export async function loadConfigObject(cwd: string, input: LintConfig, pluginRes
     }
   }
   const merged = mergePresets(input, presets);
-  const legacyIgnores = await readLegacyIgnoreFile(cwd);
+  const legacyIgnores = options.ignorePatterns ?? await readLegacyIgnoreFile(cwd);
   const config = legacyIgnores.length > 0 ? { ...merged, ignores: [...(merged.ignores ?? []), ...legacyIgnores] } : merged;
   return { config, fileRules: fileRuleMap, projectRules: projectRuleMap, pluginNames };
 }
@@ -216,7 +234,8 @@ export function severityOf(input: unknown): Severity {
 export async function findConfig(cwd: string): Promise<string | undefined> {
   let directory = resolve(cwd);
   for (;;) {
-    for (const name of CONFIG_FILES) {
+    // gherkin-lint reads .gherkin-lintrc from the working directory only.
+    for (const name of directory === resolve(cwd) ? [...CONFIG_FILES, LEGACY_CONFIG_FILE] : CONFIG_FILES) {
       const candidate = resolve(directory, name);
       try {
         const { access } = await import("node:fs/promises");
