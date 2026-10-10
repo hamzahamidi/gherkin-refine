@@ -338,7 +338,8 @@ Feature: F
     });
     expect(result.config.rules).toEqual({
       "no-duplicate-tags": "error",
-      "no-unused-outline-variables": "error"
+      "no-unused-outline-variables": "error",
+      "no-undefined-outline-variables": "error"
     });
     expect(result.unsupported).toEqual(["custom-team-rule: no equivalent rule"]);
   });

@@ -7,8 +7,8 @@ Recommended rules check correctness and use AST semantics. Size, naming, tag con
 | [`no-duplicate-tags`](rules/no-duplicate-tags.md) | error | none | Finds duplicate tags on a Feature, Rule, Scenario, or Examples block |
 | [`no-duplicate-feature-names`](rules/no-duplicate-feature-names.md) | error | none | Finds case-insensitive duplicate Feature names across linted files |
 | [`no-duplicate-scenario-names`](rules/no-duplicate-scenario-names.md) | error | `{}` | Finds case-insensitive duplicate Scenario names within one Feature or one Rule. `{ scope: "anywhere" }` compares across all linted files |
-| [`no-unused-outline-variables`](rules/no-unused-outline-variables.md) | error | none | Finds declared Examples columns unused in steps or step arguments |
-| [`no-undefined-outline-variables`](rules/no-undefined-outline-variables.md) | error | none | Finds step placeholders without an Examples column |
+| [`no-unused-outline-variables`](rules/no-unused-outline-variables.md) | error | none | Finds declared Examples columns unused in the Scenario Outline title, steps or step arguments |
+| [`no-undefined-outline-variables`](rules/no-undefined-outline-variables.md) | error | none | Finds placeholders in the Scenario Outline title, steps or step arguments without an Examples column |
 | [`scenario-size`](rules/scenario-size.md) | off | `{ maxSteps: 12 }` | Limits direct Scenario steps, not Background steps |
 | [`background-size`](rules/background-size.md) | off | `{ maxSteps: 5 }` | Limits Feature and Rule Background steps |
 | [`feature-size`](rules/feature-size.md) | off | `{ maxScenarios: 20 }` | Limits Scenarios in a Feature, including Scenarios under Rules. `countOutlineExamples: true` counts each Examples row of an outline |

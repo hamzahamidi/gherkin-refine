@@ -61,6 +61,7 @@ describe("migrateLegacyConfig", () => {
       "no-duplicate-feature-names": "error",
       "no-duplicate-scenario-names": "error",
       "no-unused-outline-variables": "error",
+      "no-undefined-outline-variables": "error",
       "no-trailing-whitespace": "off",
       "scenario-size": ["error", { maxSteps: 8 }],
       "background-size": ["error", { maxSteps: 3 }],
@@ -68,6 +69,7 @@ describe("migrateLegacyConfig", () => {
     });
     expect(result.mapped).toContain("no-dupe-scenario-names -> no-duplicate-scenario-names (scope now includes the enclosing Rule)");
     expect(result.mapped).toContain("scenario-size -> background-size");
+    expect(result.mapped).toContain("no-unused-variables -> no-undefined-outline-variables");
     expect(result.unsupported).toContain("unknown-rule: no equivalent rule");
     expect(result.unsupported).toContain("invalid-severity: unsupported setting");
     expect(result.content).toBe(`${JSON.stringify(result.config, null, 2)}\n`);
@@ -174,6 +176,7 @@ describe("migrateLegacyFile", () => {
 
     expect(result.config.rules?.["no-duplicate-tags"]).toEqual(["error", { pattern: "https://example.com/a//b/*c*/" }]);
     expect(result.config.rules?.["no-unused-outline-variables"]).toBe("off");
+    expect(result.config.rules?.["no-undefined-outline-variables"]).toBe("off");
     expect(result.content).toContain('"pattern": "https://example.com/a//b/*c*/"');
     await expect(readFile(outputPath, "utf8")).rejects.toThrow();
   });
