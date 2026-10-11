@@ -69,18 +69,6 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=hamzahamidi
-            -Dsonar.projectKey=hamzahamidi_gherkin-refine
-            -Dsonar.sources=src
-            -Dsonar.tests=test
-            -Dsonar.test.inclusions=test/**/*.test.ts
-            -Dsonar.eslint.reportPaths=eslint-report.json
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.issue.ignore.multicriteria=sequential
-            -Dsonar.issue.ignore.multicriteria.sequential.ruleKey=typescript:S9382
-            -Dsonar.issue.ignore.multicriteria.sequential.resourceKey=src/**/*
       - name: Upload coverage report
         if: always() && hashFiles('coverage/lcov.info') != ''
         uses: actions/upload-artifact@v7
