@@ -81,9 +81,11 @@ function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic):
   return oneShot || suppressedByBlanket || activeRuleDirectives.size > 0;
 }
 
+const ONE_SHOT_LINE_OFFSET: Partial<Record<Directive["kind"], number>> = { "disable-next-line": 1, "disable-line": 0 };
+
 function matchesOneShot(directive: Directive, diagnostic: Diagnostic): boolean {
-  const targetLine = directive.kind === "disable-next-line" ? directive.line + 1 : directive.kind === "disable-line" ? directive.line : undefined;
-  return diagnostic.start.line === targetLine && matchesRules(directive, diagnostic.ruleId);
+  const lineOffset = ONE_SHOT_LINE_OFFSET[directive.kind];
+  return lineOffset !== undefined && diagnostic.start.line === directive.line + lineOffset && matchesRules(directive, diagnostic.ruleId);
 }
 
 function applyBlockDirective(state: BlockState, directive: Directive): void {

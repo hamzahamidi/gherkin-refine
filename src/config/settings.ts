@@ -20,7 +20,7 @@ export function validateConfigShape(config: unknown): asserts config is LintConf
     if (config[field] !== undefined && !isValid(config[field])) throw new ConfigError(message);
   }
   const overrides = (config.overrides ?? []) as readonly Record<string, unknown>[];
-  overrides.forEach(validateOverride);
+  for (const [index, override] of overrides.entries()) validateOverride(override, index);
   for (const setting of collectRuleSettings(config.rules, overrides)) normalizeRuleSetting(setting);
 }
 
