@@ -1,5 +1,5 @@
-import type { Scenario } from "@cucumber/messages";
-import type { LintDocument, ProjectRuleModule } from "../../types.js";
+import type { Feature, Scenario } from "@cucumber/messages";
+import type { Diagnostic, LintDocument, ProjectRuleModule } from "../../types.js";
 import { forEachScenario } from "../../parser/document.js";
 import { ruleDocs } from "../helpers.js";
 import { duplicateScenarioOptions } from "./helpers.js";
@@ -46,59 +46,69 @@ export const projectRules: Readonly<Record<string, ProjectRuleModule<unknown>>> 
     },
     validateOptions: duplicateScenarioOptions,
     run({ documents, options, report }) {
-      if ((options as { scope?: string }).scope === "anywhere") {
-        const seen = new Map<string, { filePath: string; line: number }>();
-        for (const document of documents) {
-          forEachScenario(document, (scenario) => {
-            const name = scenario.name.trim().toLowerCase();
-            const first = seen.get(name);
-            if (!first) {
-              seen.set(name, { filePath: document.filePath, line: scenario.location.line });
-              return;
-            }
-            report({
-              filePath: document.filePath,
-              ruleId: "no-duplicate-scenario-names",
-              severity: "error",
-              message: `Scenario name duplicates ${first.filePath}:${first.line}.`,
-              start: { line: scenario.location.line, column: scenario.location.column ?? 1 }
-            });
-          });
-        }
-        return;
-      }
-      for (const document of documents) {
-        const feature = document.feature;
-        if (!feature) continue;
-        const scopes: { label: string; scenarios: Scenario[] }[] = [
-          { label: "Feature", scenarios: [] as Scenario[] }
-        ];
-        for (const child of feature.children) {
-          if (child.scenario) scopes[0]?.scenarios.push(child.scenario);
-          if (child.rule) {
-            const scope = { label: `Rule ${child.rule.name || "(unnamed)"}`, scenarios: [] as Scenario[] };
-            for (const nested of child.rule.children) if (nested.scenario) scope.scenarios.push(nested.scenario);
-            scopes.push(scope);
-          }
-        }
-        for (const scope of scopes) {
-          const seen = new Set<string>();
-          for (const scenario of scope.scenarios) {
-            const name = scenario.name.trim().toLowerCase();
-            if (!seen.has(name)) {
-              seen.add(name);
-              continue;
-            }
-            report({
-              filePath: document.filePath,
-              ruleId: "no-duplicate-scenario-names",
-              severity: "error",
-              message: `Scenario name duplicates another Scenario in the same ${scope.label}.`,
-              start: { line: scenario.location.line, column: scenario.location.column ?? 1 }
-            });
-          }
-        }
-      }
+      if ((options as { scope?: string }).scope === "anywhere") reportDuplicatesAnywhere(documents, report);
+      else reportDuplicatesPerScope(documents, report);
     }
   },
 };
+
+type Report = (diagnostic: Diagnostic) => void;
+
+function reportDuplicatesAnywhere(documents: readonly LintDocument[], report: Report): void {
+  const seen = new Map<string, { filePath: string; line: number }>();
+  for (const document of documents) {
+    forEachScenario(document, (scenario) => {
+      const name = scenarioKey(scenario);
+      const first = seen.get(name);
+      if (!first) {
+        seen.set(name, { filePath: document.filePath, line: scenario.location.line });
+        return;
+      }
+      report(duplicateScenario(document, scenario, `Scenario name duplicates ${first.filePath}:${first.line}.`));
+    });
+  }
+}
+
+function reportDuplicatesPerScope(documents: readonly LintDocument[], report: Report): void {
+  for (const document of documents) {
+    if (!document.feature) continue;
+    for (const scope of scenarioScopes(document.feature)) {
+      const seen = new Set<string>();
+      for (const scenario of scope.scenarios) {
+        const name = scenarioKey(scenario);
+        if (!seen.has(name)) {
+          seen.add(name);
+          continue;
+        }
+        report(duplicateScenario(document, scenario, `Scenario name duplicates another Scenario in the same ${scope.label}.`));
+      }
+    }
+  }
+}
+
+function scenarioScopes(feature: Feature): { label: string; scenarios: Scenario[] }[] {
+  const featureScope = { label: "Feature", scenarios: [] as Scenario[] };
+  const ruleScopes = [];
+  for (const child of feature.children) {
+    if (child.scenario) featureScope.scenarios.push(child.scenario);
+    if (child.rule) {
+      const scenarios = child.rule.children.flatMap((nested) => nested.scenario ? [nested.scenario] : []);
+      ruleScopes.push({ label: `Rule ${child.rule.name || "(unnamed)"}`, scenarios });
+    }
+  }
+  return [featureScope, ...ruleScopes];
+}
+
+function scenarioKey(scenario: Scenario): string {
+  return scenario.name.trim().toLowerCase();
+}
+
+function duplicateScenario(document: LintDocument, scenario: Scenario, message: string): Diagnostic {
+  return {
+    filePath: document.filePath,
+    ruleId: "no-duplicate-scenario-names",
+    severity: "error",
+    message,
+    start: { line: scenario.location.line, column: scenario.location.column ?? 1 }
+  };
+}

@@ -8,7 +8,7 @@ import { ConfigError, isRecord, messageOf } from "./errors.js";
 export async function loadPlugins(cwd: string, specifiers: readonly string[]) {
   const require = createRequire(pathToFileURL(resolve(cwd, "gherkin-refine.config.mjs")));
   const loaded = [];
-  for (const specifier of [...new Set(specifiers)]) {
+  for await (const specifier of new Set(specifiers)) {
     try {
       const resolved = await resolvePluginPath(cwd, specifier, require);
       const imported = await import(pathToFileURL(resolved).href);
@@ -22,46 +22,68 @@ export async function loadPlugins(cwd: string, specifiers: readonly string[]) {
   return loaded;
 }
 
+interface PackageManifest {
+  readonly main?: string;
+  readonly module?: string;
+  readonly exports?: unknown;
+}
+
 async function resolvePluginPath(cwd: string, specifier: string, require: ReturnType<typeof createRequire>): Promise<string> {
   try {
     return require.resolve(specifier);
   } catch {
-    if (specifier.startsWith("file:")) return fileURLToPath(specifier);
-    if (specifier.startsWith(".") || isAbsolute(specifier)) {
-      const path = resolve(cwd, specifier);
-      await import(pathToFileURL(path).href);
-      return path;
-    }
+    const local = await resolveLocalPath(cwd, specifier);
+    if (local) return local;
   }
+  return resolveFromNodeModules(cwd, specifier);
+}
 
+async function resolveLocalPath(cwd: string, specifier: string): Promise<string | undefined> {
+  if (specifier.startsWith("file:")) return fileURLToPath(specifier);
+  if (!specifier.startsWith(".") && !isAbsolute(specifier)) return undefined;
+  const path = resolve(cwd, specifier);
+  await import(pathToFileURL(path).href);
+  return path;
+}
+
+async function resolveFromNodeModules(cwd: string, specifier: string): Promise<string> {
+  const { packageName, subpath } = splitPackageSpecifier(specifier);
+  for await (const directory of ancestorDirectories(resolve(cwd))) {
+    const target = await packageEntry(resolve(directory, "node_modules", packageName), specifier, subpath);
+    if (target) return target;
+  }
+  throw new Error(`Package resolution did not find ${specifier} from ${cwd}.`);
+}
+
+function splitPackageSpecifier(specifier: string): { packageName: string; subpath: string } {
   const segments = specifier.split("/");
   const packageName = specifier.startsWith("@") ? segments.slice(0, 2).join("/") : segments[0] ?? specifier;
   const subpath = segments.slice(packageName.startsWith("@") ? 2 : 1).join("/");
-  let directory = resolve(cwd);
+  return { packageName, subpath };
+}
+
+function* ancestorDirectories(start: string): Generator<string> {
+  let directory = start;
   for (;;) {
-    const packageDirectory = resolve(directory, "node_modules", packageName);
-    try {
-      const manifest = JSON.parse(await readFile(resolve(packageDirectory, "package.json"), "utf8")) as {
-        name?: string;
-        main?: string;
-        module?: string;
-        exports?: unknown;
-      };
-      const exported = subpath
-        ? `./${subpath}`
-        : exportTarget(manifest.exports, ".") ?? manifest.module ?? manifest.main ?? "index.js";
-      const target = resolve(packageDirectory, exported);
-      const relativeTarget = relative(packageDirectory, target);
-      if (relativeTarget.startsWith("..") || isAbsolute(relativeTarget)) throw new ConfigError(`Plugin ${specifier} resolves outside its package directory.`);
-      return target;
-    } catch (error) {
-      if (error instanceof ConfigError) throw error;
-    }
+    yield directory;
     const parent = resolve(directory, "..");
-    if (parent === directory) break;
+    if (parent === directory) return;
     directory = parent;
   }
-  throw new Error(`Package resolution did not find ${specifier} from ${cwd}.`);
+}
+
+async function packageEntry(packageDirectory: string, specifier: string, subpath: string): Promise<string | undefined> {
+  try {
+    const manifest = JSON.parse(await readFile(resolve(packageDirectory, "package.json"), "utf8")) as PackageManifest;
+    const entry = subpath ? `./${subpath}` : exportTarget(manifest.exports, ".") ?? manifest.module ?? manifest.main ?? "index.js";
+    const target = resolve(packageDirectory, entry);
+    const relativeTarget = relative(packageDirectory, target);
+    if (relativeTarget.startsWith("..") || isAbsolute(relativeTarget)) throw new ConfigError(`Plugin ${specifier} resolves outside its package directory.`);
+    return target;
+  } catch (error) {
+    if (error instanceof ConfigError) throw error;
+    return undefined;
+  }
 }
 
 function exportTarget(exports: unknown, key: string): string | undefined {

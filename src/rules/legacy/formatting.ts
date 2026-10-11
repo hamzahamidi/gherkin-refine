@@ -14,7 +14,7 @@ export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
     },
     validateOptions: (value: unknown): value is "yes" | "no" => value === "yes" || value === "no",
     run({ document, options, report }) {
-      const hasLineBreak = document.lines[document.lines.length - 1] === "";
+      const hasLineBreak = document.lines.at(-1) === "";
       const line = document.lines.length;
       if (!hasLineBreak && options === "yes") {
         report({ ...lineDiagnostic(document, line, "new-line-at-eof", "New line at EOF(end of file) is required."), fix: { range: [document.source.length, document.source.length], text: "\n" } });

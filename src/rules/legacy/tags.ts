@@ -15,7 +15,7 @@ export const tagsRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, report }) {
       if (!document.feature) return;
       for (const tags of tagsByLine(featureTags(document.feature))) {
-        const last = tags[tags.length - 1];
+        const last = tags.at(-1);
         if (!last) continue;
         const line = document.lines[last.location.line - 1] ?? "";
         const rest = line.slice((last.location.column ?? 1) - 1 + last.name.length);

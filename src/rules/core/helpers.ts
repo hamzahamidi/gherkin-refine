@@ -1,6 +1,6 @@
 import type { Scenario, Tag } from "@cucumber/messages";
 import type { LintDocument } from "../../types.js";
-import { forEachStep } from "../../parser/document.js";
+import { forEachChild, forEachStep } from "../../parser/document.js";
 import { isRecord, isStringArray } from "../helpers.js";
 
 export const NAME_LENGTH_KEYS = ["Feature", "Rule", "Scenario", "Step"] as const;
@@ -60,20 +60,12 @@ export function tagGroups(document: LintDocument): readonly Readonly<{ tags: rea
   const groups: { tags: readonly Tag[]; scope: string }[] = [
     { tags: feature.tags, scope: "Feature" }
   ];
-  for (const child of feature.children) {
-    if (child.rule) groups.push({ tags: child.rule.tags, scope: "Rule" });
-    if (child.scenario) {
-      groups.push({ tags: child.scenario.tags, scope: "Scenario" });
-      for (const examples of child.scenario.examples) groups.push({ tags: examples.tags, scope: "Examples" });
-    }
-    if (child.rule) {
-      for (const nested of child.rule.children) {
-        if (!nested.scenario) continue;
-        groups.push({ tags: nested.scenario.tags, scope: "Scenario" });
-        for (const examples of nested.scenario.examples) groups.push({ tags: examples.tags, scope: "Examples" });
-      }
-    }
-  }
+  forEachChild(feature, ({ rule, scenario }) => {
+    if (rule) groups.push({ tags: rule.tags, scope: "Rule" });
+    if (!scenario) return;
+    groups.push({ tags: scenario.tags, scope: "Scenario" });
+    for (const examples of scenario.examples) groups.push({ tags: examples.tags, scope: "Examples" });
+  });
   return groups;
 }
 export function docStringContentLines(document: LintDocument): ReadonlySet<number> {
@@ -90,6 +82,8 @@ export function docStringContentLines(document: LintDocument): ReadonlySet<numbe
   });
   return contentLines;
 }
+const STAGE_NAMES = ["unknown", "Given", "When", "Then"] as const;
+
 export function stageName(stage: number): string {
-  return stage === 1 ? "Given" : stage === 2 ? "When" : stage === 3 ? "Then" : "unknown";
+  return STAGE_NAMES[stage] ?? "unknown";
 }

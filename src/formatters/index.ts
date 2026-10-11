@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { compareText } from "../core/ordering.js";
 import type { LintResult, RuleMeta } from "../types.js";
 import { VERSION } from "../version.js";
 
@@ -66,13 +67,16 @@ function formatStylish(result: LintResult, quiet: boolean): string {
       lines.push(`  ${diagnostic.start.line}:${diagnostic.start.column}  ${severity}  ${diagnostic.message}  ${diagnostic.ruleId}`);
     }
   }
-  const label = quiet
-    ? `${result.summary.errors} error${result.summary.errors === 1 ? "" : "s"}`
-    : `${result.summary.errors} error${result.summary.errors === 1 ? "" : "s"}, ${result.summary.warnings} warning${result.summary.warnings === 1 ? "" : "s"}`;
+  const errors = plural(result.summary.errors, "error");
+  const label = quiet ? errors : `${errors}, ${plural(result.summary.warnings, "warning")}`;
   if (result.summary.truncated) lines.push("Diagnostics were truncated.");
   if (lines.length > 0) lines.push("", label);
-  else lines.push(`✔ ${result.summary.files} file${result.summary.files === 1 ? "" : "s"} lint-free`);
+  else lines.push(`✔ ${plural(result.summary.files, "file")} lint-free`);
   return `${lines.join("\n")}\n`;
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 function formatCompact(result: LintResult, quiet: boolean): string {
@@ -131,8 +135,4 @@ function toSarif(result: LintResult, cwd: string, metadata: Readonly<Record<stri
 function toArtifactUri(filePath: string, cwd: string): string {
   if (filePath.startsWith("<")) return pathToFileURL(resolve(cwd, "__stdin__.feature")).href;
   return pathToFileURL(resolve(cwd, filePath)).href;
-}
-
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }
