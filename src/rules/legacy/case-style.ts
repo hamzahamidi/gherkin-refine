@@ -1,10 +1,16 @@
-export const FILE_NAME_STYLES: Readonly<Record<string, (name: string) => string>> = {
+export const FILE_NAME_STYLES = {
   PascalCase: (name) => startCase(name).replaceAll(" ", ""),
   "Title Case": (name) => startCase(name),
   camelCase: (name) => caseWords(name).reduce((result, word, index) => result + (index ? upperFirst(word.toLowerCase()) : word.toLowerCase()), ""),
   "kebab-case": (name) => caseWords(name).map((word) => word.toLowerCase()).join("-"),
   snake_case: (name) => caseWords(name).map((word) => word.toLowerCase()).join("_")
-};
+} as const satisfies Readonly<Record<string, (name: string) => string>>;
+
+export type FileNameStyle = keyof typeof FILE_NAME_STYLES;
+
+export function isFileNameStyle(value: unknown): value is FileNameStyle {
+  return typeof value === "string" && Object.hasOwn(FILE_NAME_STYLES, value);
+}
 
 function deburr(value: string): string {
   const special: Readonly<Record<string, string>> = {
