@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile, rename, stat, writeFile } from "node:fs/promises";
+import { readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 import type { Diagnostic, FileResult, LintOptions, LintResult } from "../types.js";
 import { effectiveConfig, loadConfig, loadConfigObject, validateConfiguration, type LoadedConfig } from "../config/index.js";
@@ -177,7 +177,6 @@ function compareDiagnostics(left: Diagnostic, right: Diagnostic): number {
 }
 
 async function atomicWrite(path: string, content: string): Promise<void> {
-  const { realpath } = await import("node:fs/promises");
   const target = await realpath(path);
   const fileStat = await stat(target);
   const temporary = resolve(dirname(target), `.gherkin-refine-${randomUUID()}.tmp`);
@@ -185,7 +184,6 @@ async function atomicWrite(path: string, content: string): Promise<void> {
     await writeFile(temporary, content, { encoding: "utf8", flag: "wx", mode: fileStat.mode });
     await rename(temporary, target);
   } catch (error) {
-    const { rm } = await import("node:fs/promises");
     await rm(temporary, { force: true });
     throw new LintExecutionError(`Could not write autofixed file ${path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
