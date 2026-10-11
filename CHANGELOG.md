@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.4 (2026-10-12)
+
+Rejects keys inherited from `Object.prototype`, such as `__proto__` and `toString`, as `file-name` styles. They now fail configuration validation like any other unknown style instead of crashing the rule or reporting a name like `[object Object].feature`. The package ships the rewritten README and the plugin guide's typed rule options and project rule sections.
+
 ## 1.3.3 (2026-10-11)
 
 Lints long runs of whitespace or line breaks in linear time. `no-trailing-whitespace`, `new-line-at-eof`, disable directive reasons and the language header lookup took about a minute on a 200,000 character run and now take under half a second, with the same results.
