@@ -75,6 +75,18 @@ describe("migrateLegacyConfig", () => {
     expect(result.content).toBe(`${JSON.stringify(result.config, null, 2)}\n`);
   });
 
+  it("treats legacy keys named after Object.prototype members as unknown rules", () => {
+    const result = migrateLegacyConfig({ toString: "on", constructor: "error", hasOwnProperty: "warn" });
+
+    expect(result.config.rules).toEqual({});
+    expect(result.mapped).toEqual([]);
+    expect(result.unsupported).toEqual([
+      "toString: no equivalent rule",
+      "constructor: no equivalent rule",
+      "hasOwnProperty: no equivalent rule"
+    ]);
+  });
+
   it("uses gherkin-lint defaults when size settings have no options", () => {
     const result = migrateLegacyConfig({
       "scenario-size": "on",
