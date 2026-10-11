@@ -1,0 +1,4 @@
+/* Mermaid sizes label boxes for its own line height; the 28px paragraph line height of .vp-doc would clip multi-line labels. */
+.vp-doc .mermaid p {
+  line-height: inherit;
+}
