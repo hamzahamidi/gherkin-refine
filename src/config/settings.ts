@@ -1,44 +1,51 @@
 import type { LintConfig, RuleSetting, Severity } from "../types.js";
 import { ConfigError, isRecord } from "./errors.js";
 
+type FieldCheck = readonly [field: string, isValid: (value: unknown) => boolean, message: string];
+
+const FIELD_CHECKS: readonly FieldCheck[] = [
+  ["extends", isStringArray, "Configuration field extends must be an array of preset names."],
+  ["rules", isRecord, "Configuration field rules must be an object."],
+  ["overrides", (value) => Array.isArray(value) && value.every(isRecord), "Configuration field overrides must be an array of objects."],
+  ["ignores", isStringArray, "Configuration field ignores must be an array of glob patterns."],
+  ["plugins", isStringArray, "Configuration field plugins must be an array of package names."],
+  ["reportUnusedDisableDirectives", (value) => typeof value === "boolean", "Configuration field reportUnusedDisableDirectives must be a boolean."],
+  ["maxConcurrency", isPositiveInteger, "Configuration field maxConcurrency must be a positive integer."],
+  ["maxFixPasses", isPositiveInteger, "Configuration field maxFixPasses must be a positive integer."]
+];
+
 export function validateConfigShape(config: unknown): asserts config is LintConfig {
   if (!isRecord(config)) throw new ConfigError("Configuration must export an object.");
-  if (config.extends !== undefined && (!Array.isArray(config.extends) || !config.extends.every((item) => typeof item === "string"))) {
-    throw new ConfigError("Configuration field extends must be an array of preset names.");
+  for (const [field, isValid, message] of FIELD_CHECKS) {
+    if (config[field] !== undefined && !isValid(config[field])) throw new ConfigError(message);
   }
-  if (config.rules !== undefined && !isRecord(config.rules)) throw new ConfigError("Configuration field rules must be an object.");
-  if (config.overrides !== undefined && (!Array.isArray(config.overrides) || !config.overrides.every(isRecord))) {
-    throw new ConfigError("Configuration field overrides must be an array of objects.");
+  const overrides = (config.overrides ?? []) as readonly Record<string, unknown>[];
+  overrides.forEach(validateOverride);
+  for (const setting of collectRuleSettings(config.rules, overrides)) normalizeRuleSetting(setting);
+}
+
+function validateOverride(override: Record<string, unknown>, index: number): void {
+  const files = override.files;
+  if (!(typeof files === "string" || isStringArray(files) && files.length > 0)) {
+    throw new ConfigError(`Configuration override ${index} requires files as a string or non-empty array of strings.`);
   }
-  if (config.ignores !== undefined && (!Array.isArray(config.ignores) || !config.ignores.every((item) => typeof item === "string"))) {
-    throw new ConfigError("Configuration field ignores must be an array of glob patterns.");
+  if (override.rules !== undefined && !isRecord(override.rules)) throw new ConfigError(`Configuration override ${index} rules must be an object.`);
+  if (override.ignores !== undefined && !isStringArray(override.ignores)) {
+    throw new ConfigError(`Configuration override ${index} ignores must be an array of glob patterns.`);
   }
-  if (config.plugins !== undefined && (!Array.isArray(config.plugins) || !config.plugins.every((item) => typeof item === "string"))) {
-    throw new ConfigError("Configuration field plugins must be an array of package names.");
-  }
-  if (config.reportUnusedDisableDirectives !== undefined && typeof config.reportUnusedDisableDirectives !== "boolean") {
-    throw new ConfigError("Configuration field reportUnusedDisableDirectives must be a boolean.");
-  }
-  for (const field of ["maxConcurrency", "maxFixPasses"] as const) {
-    const value = config[field];
-    if (value !== undefined && (!Number.isInteger(value) || Number(value) < 1)) {
-      throw new ConfigError(`Configuration field ${field} must be a positive integer.`);
-    }
-  }
-  for (const [index, override] of (Array.isArray(config.overrides) ? config.overrides : []).entries()) {
-    const files = override.files;
-    if (!(typeof files === "string" || Array.isArray(files) && files.length > 0 && files.every((item) => typeof item === "string"))) {
-      throw new ConfigError(`Configuration override ${index} requires files as a string or non-empty array of strings.`);
-    }
-    if (override.rules !== undefined && !isRecord(override.rules)) throw new ConfigError(`Configuration override ${index} rules must be an object.`);
-    if (override.ignores !== undefined && (!Array.isArray(override.ignores) || !override.ignores.every((item) => typeof item === "string"))) {
-      throw new ConfigError(`Configuration override ${index} ignores must be an array of glob patterns.`);
-    }
-  }
-  for (const setting of [
-    ...Object.values(isRecord(config.rules) ? config.rules : {}),
-    ...(Array.isArray(config.overrides) ? config.overrides.flatMap((override) => Object.values(isRecord(override.rules) ? override.rules : {})) : [])
-  ]) normalizeRuleSetting(setting as RuleSetting);
+}
+
+function collectRuleSettings(rules: unknown, overrides: readonly Record<string, unknown>[]): RuleSetting[] {
+  return [rules, ...overrides.map((override) => override.rules)]
+    .flatMap((ruleMap) => Object.values(isRecord(ruleMap) ? ruleMap : {})) as RuleSetting[];
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isPositiveInteger(value: unknown): boolean {
+  return Number.isInteger(value) && Number(value) >= 1;
 }
 
 export function normalizeRuleSetting(setting: RuleSetting): Readonly<{ severity: Severity; options: unknown }> {
