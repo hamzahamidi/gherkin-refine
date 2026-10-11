@@ -8,7 +8,7 @@ import { ConfigError, isRecord, messageOf } from "./errors.js";
 export async function loadPlugins(cwd: string, specifiers: readonly string[]) {
   const require = createRequire(pathToFileURL(resolve(cwd, "gherkin-refine.config.mjs")));
   const loaded = [];
-  for (const specifier of new Set(specifiers)) {
+  for await (const specifier of new Set(specifiers)) {
     try {
       const resolved = await resolvePluginPath(cwd, specifier, require);
       const imported = await import(pathToFileURL(resolved).href);
@@ -48,7 +48,7 @@ async function resolveLocalPath(cwd: string, specifier: string): Promise<string 
 
 async function resolveFromNodeModules(cwd: string, specifier: string): Promise<string> {
   const { packageName, subpath } = splitPackageSpecifier(specifier);
-  for (const directory of ancestorDirectories(resolve(cwd))) {
+  for await (const directory of ancestorDirectories(resolve(cwd))) {
     const target = await packageEntry(resolve(directory, "node_modules", packageName), specifier, subpath);
     if (target) return target;
   }
