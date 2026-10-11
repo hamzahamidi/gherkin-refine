@@ -10,7 +10,7 @@ import { lintFiles } from "../src/index.js";
 const legacyCli = join(createRequire(import.meta.url).resolve("gherkin-lint/package.json"), "..", "dist/main.js");
 const fixtures = join(import.meta.dirname, "fixtures/gherkin-lint-parity");
 
-type Mode = "same" | "subset" | "count" | "files";
+type Mode = "same" | "subset" | "count" | "files" | "text";
 
 const cases: readonly (readonly [string, unknown, Mode, (string | readonly string[])?])[] = [
   ["no-unnamed-features", "on", "same"],
@@ -42,7 +42,7 @@ const cases: readonly (readonly [string, unknown, Mode, (string | readonly strin
   ["no-trailing-spaces", "on", "same", "no-trailing-whitespace"],
   ["no-duplicate-tags", "on", "same"],
   ["no-unused-variables", "on", "same", ["no-unused-outline-variables", "no-undefined-outline-variables"]],
-  ["no-dupe-feature-names", "on", "same", "no-duplicate-feature-names"],
+  ["no-dupe-feature-names", "on", "text", "no-duplicate-feature-names"],
   ["no-dupe-scenario-names", "on", "count", "no-duplicate-scenario-names"],
   ["no-dupe-scenario-names", ["on", "in-feature"], "same", "no-duplicate-scenario-names"],
   ["max-scenarios-per-file", ["on", { maxScenarios: 1 }], "files", "feature-size"],
@@ -51,18 +51,23 @@ const cases: readonly (readonly [string, unknown, Mode, (string | readonly strin
   ["only-one-when", "on", "subset"]
 ];
 
+let root = "";
 let workspace = "";
 
 beforeAll(async () => {
-  workspace = await realpath(await mkdtemp(join(tmpdir(), "gherkin-lint-parity-")));
+  root = await realpath(await mkdtemp(join(tmpdir(), "gherkin-lint-parity-")));
+  workspace = join(root, "workspace");
   await cp(fixtures, workspace, { recursive: true });
 });
 
 afterAll(async () => {
-  await rm(workspace, { recursive: true, force: true });
+  await rm(root, { recursive: true, force: true });
 });
 
+// gherkin-lint reads files concurrently and reports a duplicate name on whichever copy finishes reading last,
+// so "text" compares the reported line's content instead of its location.
 function key(filePath: string, line: number, mode: Mode): string {
+  if (mode === "text") return readFileSync(filePath, "utf8").split(/\r?\n/)[Math.max(1, line) - 1]?.trim() ?? "";
   const file = relative(workspace, filePath).replaceAll("\\", "/");
   return mode === "files" ? file : `${file}:${Math.max(1, line)}`;
 }
@@ -73,7 +78,7 @@ describe("gherkin-lint 4.2.4 comparison", () => {
     await writeFile(join(workspace, ".gherkin-lintrc"), JSON.stringify({ [rule]: setting }));
 
     // gherkin-lint calls process.exit before a piped stream drains, so its report goes to a file.
-    const reportPath = join(workspace, "..", `${rule}-report.json`);
+    const reportPath = join(root, `${rule}-report.json`);
     const report = openSync(reportPath, "w");
     spawnSync(process.execPath, [legacyCli, "-f", "json"], { cwd: workspace, stdio: ["ignore", report, report] });
     closeSync(report);
@@ -87,7 +92,7 @@ describe("gherkin-lint 4.2.4 comparison", () => {
       .filter((diagnostic) => nativeIds.includes(diagnostic.ruleId))
       .map((diagnostic) => key(join(workspace, file.filePath), diagnostic.start.line, mode)));
 
-    if (mode === "same") expect([...native].sort()).toEqual([...legacy].sort());
+    if (mode === "same" || mode === "text") expect([...native].sort()).toEqual([...legacy].sort());
     if (mode === "files") expect([...new Set(native)].sort()).toEqual([...new Set(legacy)].sort());
     if (mode === "count") expect(native).toHaveLength(legacy.length);
     if (mode === "subset") {
