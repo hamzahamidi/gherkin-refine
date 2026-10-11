@@ -1,25 +1,12 @@
-import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { minimatch } from "minimatch";
-import type {
-  LintConfig,
-  PluginModule,
-  ProjectRuleModule,
-  RuleModule,
-  RuleSetting,
-  Severity
-} from "../types.js";
+import { basename, dirname, extname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import type { LintConfig, ProjectRuleModule, RuleModule, Severity } from "../types.js";
 import { fileRules, projectRules, recommendedRules } from "../rules/core.js";
 import { migrateLegacyConfig, parseLegacyConfig } from "../compat/migrate.js";
-
-export class ConfigError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = "ConfigError";
-  }
-}
+import { ConfigError, isRecord, messageOf } from "./errors.js";
+import { loadPlugins } from "./plugins.js";
+import { validateConfigShape } from "./settings.js";
 
 export interface LoadedConfig {
   readonly config: LintConfig;
@@ -132,108 +119,6 @@ async function readLegacyIgnoreFile(cwd: string): Promise<readonly string[]> {
   }
 }
 
-export function effectiveConfig(
-  loaded: LoadedConfig,
-  filePath: string,
-  cwd: string
-): EffectiveConfig {
-  const relativePath = normalizePath(isAbsolute(filePath) ? relative(cwd, filePath) : filePath);
-  const settings = new Map<string, RuleSetting>(Object.entries(loaded.config.rules ?? {}));
-  let ignored = matchesAny(relativePath, loaded.config.ignores ?? []);
-  for (const override of loaded.config.overrides ?? []) {
-    if (matchesAny(relativePath, asArray(override.files))) {
-      for (const [id, setting] of Object.entries(override.rules ?? {})) settings.set(id, setting);
-      if (matchesAny(relativePath, override.ignores ?? [])) ignored = true;
-    }
-  }
-
-  const rules = new Map<string, Readonly<{ severity: Severity; options: unknown }>>();
-  for (const [id, setting] of settings) {
-    const normalized = normalizeRuleSetting(setting);
-    rules.set(id, normalized);
-  }
-  return { rules, ignored };
-}
-
-export function validateConfiguration(loaded: LoadedConfig, filePaths: readonly string[], cwd: string): void {
-  const entries: { id: string; setting: Readonly<{ severity: Severity; options: unknown }>; filePath: string }[] = [];
-  for (const filePath of filePaths) {
-    const effective = effectiveConfig(loaded, filePath, cwd);
-    for (const [id, setting] of effective.rules) entries.push({ id, setting, filePath });
-  }
-  for (const [id, setting] of Object.entries(loaded.config.rules ?? {})) entries.push({ id, setting: normalizeRuleSetting(setting), filePath: "configuration" });
-  for (const override of loaded.config.overrides ?? []) {
-    for (const [id, setting] of Object.entries(override.rules ?? {})) entries.push({ id, setting: normalizeRuleSetting(setting), filePath: "configuration override" });
-  }
-  for (const { id, setting, filePath } of entries) {
-    const module = loaded.fileRules.get(id) ?? loaded.projectRules.get(id);
-    if (!module) throw new ConfigError(`Unknown rule ${JSON.stringify(id)} in configuration.`);
-    const options = setting.options ?? module.meta.defaultOptions ?? {};
-    if (module.validateOptions && !module.validateOptions(options)) {
-      throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}.`);
-    }
-  }
-}
-
-function validateConfigShape(config: unknown): asserts config is LintConfig {
-  if (!isRecord(config)) throw new ConfigError("Configuration must export an object.");
-  if (config.extends !== undefined && (!Array.isArray(config.extends) || !config.extends.every((item) => typeof item === "string"))) {
-    throw new ConfigError("Configuration field extends must be an array of preset names.");
-  }
-  if (config.rules !== undefined && !isRecord(config.rules)) throw new ConfigError("Configuration field rules must be an object.");
-  if (config.overrides !== undefined && (!Array.isArray(config.overrides) || !config.overrides.every(isRecord))) {
-    throw new ConfigError("Configuration field overrides must be an array of objects.");
-  }
-  if (config.ignores !== undefined && (!Array.isArray(config.ignores) || !config.ignores.every((item) => typeof item === "string"))) {
-    throw new ConfigError("Configuration field ignores must be an array of glob patterns.");
-  }
-  if (config.plugins !== undefined && (!Array.isArray(config.plugins) || !config.plugins.every((item) => typeof item === "string"))) {
-    throw new ConfigError("Configuration field plugins must be an array of package names.");
-  }
-  if (config.reportUnusedDisableDirectives !== undefined && typeof config.reportUnusedDisableDirectives !== "boolean") {
-    throw new ConfigError("Configuration field reportUnusedDisableDirectives must be a boolean.");
-  }
-  for (const field of ["maxConcurrency", "maxFixPasses"] as const) {
-    const value = config[field];
-    if (value !== undefined && (!Number.isInteger(value) || Number(value) < 1)) {
-      throw new ConfigError(`Configuration field ${field} must be a positive integer.`);
-    }
-  }
-  for (const [index, override] of (Array.isArray(config.overrides) ? config.overrides : []).entries()) {
-    const files = override.files;
-    if (!(typeof files === "string" || Array.isArray(files) && files.length > 0 && files.every((item) => typeof item === "string"))) {
-      throw new ConfigError(`Configuration override ${index} requires files as a string or non-empty array of strings.`);
-    }
-    if (override.rules !== undefined && !isRecord(override.rules)) throw new ConfigError(`Configuration override ${index} rules must be an object.`);
-    if (override.ignores !== undefined && (!Array.isArray(override.ignores) || !override.ignores.every((item) => typeof item === "string"))) {
-      throw new ConfigError(`Configuration override ${index} ignores must be an array of glob patterns.`);
-    }
-  }
-  for (const setting of [
-    ...Object.values(isRecord(config.rules) ? config.rules : {}),
-    ...(Array.isArray(config.overrides) ? config.overrides.flatMap((override) => Object.values(isRecord(override.rules) ? override.rules : {})) : [])
-  ]) normalizeRuleSetting(setting as RuleSetting);
-}
-
-export function normalizeRuleSetting(setting: RuleSetting): Readonly<{ severity: Severity; options: unknown }> {
-  let severityInput: unknown = setting;
-  let options: unknown;
-  if (Array.isArray(setting)) {
-    if (setting.length < 1 || setting.length > 2) throw new ConfigError("Rule setting arrays must contain a severity and optional options.");
-    severityInput = setting[0];
-    options = setting[1];
-  }
-  const severity = severityOf(severityInput);
-  return { severity, options };
-}
-
-export function severityOf(input: unknown): Severity {
-  if (input === "off" || input === 0) return "off";
-  if (input === "warn" || input === 1) return "warn";
-  if (input === "error" || input === 2) return "error";
-  throw new ConfigError(`Invalid rule severity ${JSON.stringify(input)}. Use off, warn, error, 0, 1, or 2.`);
-}
-
 export async function findConfig(cwd: string): Promise<string | undefined> {
   let directory = resolve(cwd);
   for (;;) {
@@ -292,121 +177,10 @@ function qualifyRuleId(namespace: string, id: string): string {
   return id.includes("/") ? id : `${namespace}/${id}`;
 }
 
-async function loadPlugins(cwd: string, specifiers: readonly string[]) {
-  const require = createRequire(pathToFileURL(resolve(cwd, "gherkin-refine.config.mjs")));
-  const loaded = [];
-  for (const specifier of [...new Set(specifiers)]) {
-    try {
-      const resolved = await resolvePluginPath(cwd, specifier, require);
-      const imported = await import(pathToFileURL(resolved).href);
-      const module = (imported.default ?? imported) as PluginModule;
-      const namespace = namespaceFromPackageName(readPackageName(resolved) ?? specifier);
-      loaded.push({ specifier, namespace, module });
-    } catch (error) {
-      throw new ConfigError(`Could not load plugin ${JSON.stringify(specifier)}: ${messageOf(error)}`, { cause: error });
-    }
-  }
-  return loaded;
-}
+export { ConfigError };
 
-async function resolvePluginPath(cwd: string, specifier: string, require: ReturnType<typeof createRequire>): Promise<string> {
-  try {
-    return require.resolve(specifier);
-  } catch {
-    if (specifier.startsWith("file:")) return fileURLToPath(specifier);
-    if (specifier.startsWith(".") || isAbsolute(specifier)) {
-      const path = resolve(cwd, specifier);
-      await import(pathToFileURL(path).href);
-      return path;
-    }
-  }
+export { effectiveConfig } from "./resolution.js";
 
-  const segments = specifier.split("/");
-  const packageName = specifier.startsWith("@") ? segments.slice(0, 2).join("/") : segments[0] ?? specifier;
-  const subpath = segments.slice(packageName.startsWith("@") ? 2 : 1).join("/");
-  let directory = resolve(cwd);
-  for (;;) {
-    const packageDirectory = resolve(directory, "node_modules", packageName);
-    try {
-      const manifest = JSON.parse(await readFile(resolve(packageDirectory, "package.json"), "utf8")) as {
-        name?: string;
-        main?: string;
-        module?: string;
-        exports?: unknown;
-      };
-      const exported = subpath
-        ? `./${subpath}`
-        : exportTarget(manifest.exports, ".") ?? manifest.module ?? manifest.main ?? "index.js";
-      const target = resolve(packageDirectory, exported);
-      const relativeTarget = relative(packageDirectory, target);
-      if (relativeTarget.startsWith("..") || isAbsolute(relativeTarget)) throw new ConfigError(`Plugin ${specifier} resolves outside its package directory.`);
-      return target;
-    } catch (error) {
-      if (error instanceof ConfigError) throw error;
-    }
-    const parent = resolve(directory, "..");
-    if (parent === directory) break;
-    directory = parent;
-  }
-  throw new Error(`Package resolution did not find ${specifier} from ${cwd}.`);
-}
+export { validateConfiguration } from "./check.js";
 
-function exportTarget(exports: unknown, key: string): string | undefined {
-  if (typeof exports === "string") return key === "." ? exports : undefined;
-  if (Array.isArray(exports)) {
-    for (const item of exports) {
-      const target = exportTarget(item, key);
-      if (target) return target;
-    }
-    return undefined;
-  }
-  if (!isRecord(exports)) return undefined;
-  const subpathExports = Object.keys(exports).some((name) => name.startsWith("."));
-  if (subpathExports) return exportTarget(exports[key], key);
-  for (const condition of ["node", "import", "default", "require"]) {
-    const target = exportTarget(exports[condition], key);
-    if (target) return target;
-  }
-  return undefined;
-}
-
-function readPackageName(resolvedFile: string): string | undefined {
-  const require = createRequire(import.meta.url);
-  let directory = resolve(resolvedFile, "..");
-  for (;;) {
-    try {
-      const manifestPath = resolve(directory, "package.json");
-      const manifest = require(manifestPath) as { name?: unknown };
-      return typeof manifest.name === "string" ? manifest.name : undefined;
-    } catch {
-      const parent = resolve(directory, "..");
-      if (parent === directory) return undefined;
-      directory = parent;
-    }
-  }
-}
-
-function namespaceFromPackageName(name: string): string {
-  const last = name.split("/").at(-1) ?? name;
-  return last.replace(/^gherkin-refine-plugin-/, "").replace(/^gherkinlint-plugin-/, "").replace(/^eslint-plugin-/, "");
-}
-
-function normalizePath(path: string): string {
-  return path.replaceAll("\\", "/").replace(/^\.\//, "");
-}
-
-function matchesAny(filePath: string, patterns: readonly string[]): boolean {
-  return patterns.some((pattern) => minimatch(filePath, normalizePath(pattern), { dot: true }));
-}
-
-function asArray(value: string | readonly string[]): readonly string[] {
-  return typeof value === "string" ? [value] : value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+export { normalizeRuleSetting, severityOf } from "./settings.js";
