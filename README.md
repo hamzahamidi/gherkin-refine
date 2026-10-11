@@ -34,6 +34,19 @@ npm install --save-dev gherkin-refine
 
 Scripts that call `gherkin-lint` keep working. The `gherkinlint` command is also available as an alias. Gherkin Refine reads `.gherkin-lintrc` and `.gherkin-lintignore` and supports all 31 built-in rules and the legacy CLI flags. Some behavior differs because the parser is newer and several gherkin-lint bugs are fixed. `xunit` output is unavailable, and custom `--rulesdir` rules need to be ported to a plugin. Review the [migration guide](https://hamidihamza.com/gherkin-refine/migration) before changing CI.
 
+| | gherkin-lint 4.2.4 | Gherkin Refine |
+| --- | --- | --- |
+| Node.js | 10 or later | 22.18 or later |
+| Gherkin parser | `gherkin` 9, deprecated | `@cucumber/gherkin` 42 |
+| Built-in rules | 31 | 35, covering all 31 gherkin-lint rules |
+| Severity | On or off | `off`, `warn`, `error` |
+| Autofix | None | 6 whitespace and step keyword rules |
+| Output formats | `stylish`, `json`, `xunit` | `stylish`, `compact`, `json`, `ndjson`, `sarif` |
+| Inline suppression | None | `gherkin-refine-disable` comments |
+| Custom rules | `--rulesdir` | Plugins. `--rulesdir` rules need porting |
+
+Findings are not identical: the parser is newer, Scenarios inside `Rule` blocks are checked, and three gherkin-lint bugs are fixed. The [full comparison](https://hamidihamza.com/gherkin-refine/comparison) covers every difference and when gherkin-lint still fits.
+
 ## Safe fixes
 
 Formatting rules are opt in. Preview fixes before applying them:

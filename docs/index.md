@@ -42,10 +42,11 @@ Read the practical tutorial on [the original site](https://hamidihamza.com/notes
 
 1. [Getting started](getting-started.md) installs the CLI, runs it in GitHub Actions, and applies safe fixes.
 2. [Migration](migration.md) describes migrating from `gherkin-lint`.
-3. [Configuration](configuration.md) explains config files, rule options, overrides, and inline suppression.
-4. [Rules](rules.md) lists the built in rules and their defaults.
-5. [Plugins](plugins.md) explains how to write and load custom rules.
-6. [AI agent integration](agent-integration.md) covers structured output and an agent remediation loop.
+3. [Comparison](comparison.md) compares Gherkin Refine with `gherkin-lint` feature by feature.
+4. [Configuration](configuration.md) explains config files, rule options, overrides, and inline suppression.
+5. [Rules](rules.md) lists the built in rules and their defaults.
+6. [Plugins](plugins.md) explains how to write and load custom rules.
+7. [AI agent integration](agent-integration.md) covers structured output and an agent remediation loop.
 
 ## Technical notes
 

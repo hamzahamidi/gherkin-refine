@@ -10,6 +10,7 @@ const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"
 const guides = [
   ["getting-started", "Getting started", "Install, configure, fix, and run in GitHub Actions"],
   ["migration", "Migrate from gherkin-lint", "Drop-in replacement scope, rule mapping, and CLI flags"],
+  ["comparison", "Compare with gherkin-lint", "Feature by feature differences and when gherkin-lint still fits"],
   ["configuration", "Configuration", "Config files, presets, overrides, ignores, and inline suppression"],
   ["rules", "Rules", "Every built-in rule with defaults and options"],
   ["plugins", "Plugins", "Writing and loading custom rules"],

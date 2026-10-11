@@ -1,6 +1,6 @@
 # Migration from gherkin-lint
 
-Replace the `gherkin-lint` dependency with `gherkin-refine`. The package installs a `gherkin-lint` command, reads `.gherkin-lintrc` and `.gherkin-lintignore` from the working directory, and accepts the gherkin-lint flags below, so existing scripts keep working. A `.gherkin-lintrc` runs only the rules it lists. When it lists rules that gherkin-refine cannot fully check, each run prints one warning line on stderr.
+Replace the `gherkin-lint` dependency with `gherkin-refine`. The package installs a `gherkin-lint` command, reads `.gherkin-lintrc` and `.gherkin-lintignore` from the working directory, and accepts the gherkin-lint flags below, so existing scripts keep working. The [comparison](comparison.md) summarizes what changes beyond the rules. A `.gherkin-lintrc` runs only the rules it lists. When it lists rules that gherkin-refine cannot fully check, each run prints one warning line on stderr.
 
 To review those differences, or to move to a native configuration, convert the file. The historical `.gherkin-lintrc` file is JSON and may contain comments. Run:
 
@@ -28,7 +28,7 @@ Keep `.gherkin-lintignore`. gherkin-refine reads it from the working directory o
 | `keywords-in-logical-order` | `logical-keyword-order` | Uses parser semantic step types, including localized dialects |
 | `allowed-tags` | `allowed-tags` | Same `tags` and `patterns` options. Tags inside Rule blocks are also checked |
 | `no-restricted-tags` | `no-restricted-tags` | Same `tags` and `patterns` options. Tags inside Rule blocks are also checked |
-| `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `required-tags`, `no-restricted-patterns` | Same names | Same options and findings. Each one except `file-name` has a safe autofix |
+| `indentation`, `new-line-at-eof`, `file-name`, `use-and`, `one-space-between-tags`, `required-tags`, `no-restricted-patterns` | Same names | Same options and findings. `indentation`, `new-line-at-eof`, `use-and`, and `one-space-between-tags` have a safe autofix |
 | `no-unnamed-features`, `no-unnamed-scenarios`, `no-empty-file`, `no-files-without-scenarios`, `no-empty-background`, `no-background-only-scenario`, `no-scenario-outlines-without-examples`, `no-examples-in-scenarios`, `no-partially-commented-tag-lines`, `no-superfluous-tags` | Same names | Same findings. Except for `indentation`, rules that walk Scenarios also check the ones inside Rule blocks |
 | `no-homogenous-tags` | `no-homogeneous-tags` | Spelling corrected; see the fixes below |
 | `max-scenarios-per-file` | `feature-size` | Same count and options: `countOutlineExamples` defaults to `true` when migrated, `maxScenarios` to 10 |
@@ -39,7 +39,7 @@ Three rules fix gherkin-lint bugs and can only report less than before: `no-homo
 
 `migrate --strict` fails without writing a file when any rule cannot be fully migrated.
 
-`test/gherkin-lint-parity.test.ts` runs gherkin-lint 4.2.4 and gherkin-refine on the same fixtures in CI, for every rule, and fails if their findings differ beyond the fixes listed above.
+`test/gherkin-lint-parity.test.ts` runs gherkin-lint 4.2.4 and gherkin-refine on the same fixtures in CI for every rule. Most cases compare each finding by file and line; the others compare line text, counts, affected files, or a subset. See the [comparison](comparison.md#behavior-that-changes) for the split.
 
 This is a migration aid, not a compatibility mode. Review output because the former and current tools have different parser and scope behavior.
 
