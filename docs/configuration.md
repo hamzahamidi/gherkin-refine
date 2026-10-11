@@ -25,6 +25,8 @@ export default defineConfig({
 });
 ```
 
+`no-duplicate-feature-names` and `no-duplicate-scenario-names` are project rules: they check all files together. An override can change their severity for some files, but their options, such as `scope`, come from the first file, in path order, where the rule is enabled. See [project rules](plugins.md#project-rules).
+
 TypeScript config files run through Node's native type stripping on the supported runtime. Use erasable syntax only. Node does not apply `tsconfig` transforms, path aliases, or type checking when loading a config file.
 
 ## Inline suppression
