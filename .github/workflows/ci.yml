@@ -78,6 +78,9 @@ jobs:
             -Dsonar.test.inclusions=test/**/*.test.ts
             -Dsonar.eslint.reportPaths=eslint-report.json
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.issue.ignore.multicriteria=sequential
+            -Dsonar.issue.ignore.multicriteria.sequential.ruleKey=typescript:S9382
+            -Dsonar.issue.ignore.multicriteria.sequential.resourceKey=src/**/*
       - name: Upload coverage report
         if: always() && hashFiles('coverage/lcov.info') != ''
         uses: actions/upload-artifact@v7

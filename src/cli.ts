@@ -246,7 +246,7 @@ function collect(value: string, previous: readonly string[]): readonly string[] 
 }
 
 async function rejectLegacyRuleDirectories(cwd: string, directories: readonly string[]): Promise<void> {
-  for await (const directory of directories) {
+  for (const directory of directories) {
     let entries: string[];
     try {
       entries = await readdir(resolve(cwd, directory));

@@ -14,7 +14,7 @@ interface DiscoveredInput {
 export async function discoverFiles(inputs: readonly string[], cwd: string): Promise<{ paths: string[]; explicitFiles: ReadonlySet<string> }> {
   const files = new Set<string>();
   const explicitFiles = new Set<string>();
-  for await (const input of inputs) {
+  for (const input of inputs) {
     const { paths, explicit } = await discoverInput(input, cwd);
     for (const path of paths) {
       files.add(path);

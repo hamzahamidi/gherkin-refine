@@ -53,7 +53,7 @@ export async function lintFiles(paths: readonly string[], options: LintOptions &
   const processed = await processFiles(files, loaded, cwd, options, true);
 
   if (options.fix) {
-    for await (const result of processed) {
+    for (const result of processed) {
       if (result.output === undefined || result.output === result.file.source) continue;
       throwIfAborted(options.signal);
       await atomicWrite(result.file.absolutePath, result.output);
