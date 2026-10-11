@@ -40,7 +40,7 @@ Scripts that call `gherkin-lint` keep working. The `gherkinlint` command is also
 | Gherkin parser | `gherkin` 9, deprecated | `@cucumber/gherkin` 42 |
 | Built-in rules | 31 | 35, covering all 31 gherkin-lint rules |
 | Severity | On or off | `off`, `warn`, `error` |
-| Autofix | None | 6 whitespace and step keyword rules |
+| Autofix | None | 6 opt-in whitespace and step keyword rules |
 | Output formats | `stylish`, `json`, `xunit` | `stylish`, `compact`, `json`, `ndjson`, `sarif` |
 | Inline suppression | None | `gherkin-refine-disable` comments |
 | Custom rules | `--rulesdir` | Plugins. `--rulesdir` rules need porting |
