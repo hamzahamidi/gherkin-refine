@@ -1,7 +1,8 @@
 import type { RuleModule } from "../../types.js";
 import { forEachScenario } from "../../parser/document.js";
+import { defineRule } from "../define.js";
 import { DOCS_URL, lineDiagnostic, rangeDiagnostic, ruleDocs } from "../helpers.js";
-import { featureSizeOptions, outlinePlaceholders, scenarioSizeOptions, tagGroups } from "./helpers.js";
+import { featureSizeOptions, outlinePlaceholders, scenarioSizeOptions, tagGroups, type ScenarioSizeOptions } from "./helpers.js";
 
 export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
   "unused-disable-directive": {
@@ -101,7 +102,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     }
   },
 
-  "scenario-size": {
+  "scenario-size": defineRule<ScenarioSizeOptions>({
     meta: {
       description: "Limit the number of steps in a Scenario.",
       category: "structure",
@@ -112,14 +113,13 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     },
     validateOptions: scenarioSizeOptions,
     run({ document, options, report }) {
-      const { maxSteps } = options as { maxSteps: number };
       forEachScenario(document, (scenario) => {
-        if (scenario.steps.length <= maxSteps) return;
+        if (scenario.steps.length <= options.maxSteps) return;
         const line = scenario.location.line;
-        report(lineDiagnostic(document, line, "scenario-size", `Scenario contains ${scenario.steps.length} steps; configured maximum is ${maxSteps}.`));
+        report(lineDiagnostic(document, line, "scenario-size", `Scenario contains ${scenario.steps.length} steps; configured maximum is ${options.maxSteps}.`));
       });
     }
-  },
+  }),
 
   "background-size": {
     meta: {

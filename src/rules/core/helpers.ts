@@ -12,7 +12,10 @@ export const nameLengthOptions = (value: unknown): value is { max: number } | Pa
 };
 export const duplicateScenarioOptions = (value: unknown): value is { scope?: "feature" | "anywhere" } =>
   isRecord(value) && Object.keys(value).every((key) => key === "scope") && (value.scope === undefined || value.scope === "feature" || value.scope === "anywhere");
-export const scenarioSizeOptions = (value: unknown): value is { maxSteps: number } =>
+export interface ScenarioSizeOptions {
+  readonly maxSteps: number;
+}
+export const scenarioSizeOptions = (value: unknown): value is ScenarioSizeOptions =>
   isRecord(value) && Number.isInteger(value.maxSteps) && Number(value.maxSteps) > 0;
 export const featureSizeOptions = (value: unknown): value is { maxScenarios: number; countOutlineExamples?: boolean } =>
   isRecord(value) && Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) > 0
