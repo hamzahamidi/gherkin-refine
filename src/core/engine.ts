@@ -1,32 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
-import type { Diagnostic, FileResult, LintDocument, LintOptions, LintResult, RuleFix } from "../types.js";
+import type { Diagnostic, FileResult, LintOptions, LintResult } from "../types.js";
 import { effectiveConfig, loadConfig, loadConfigObject, validateConfiguration, type LoadedConfig } from "../config/index.js";
-import { parseGherkin } from "../parser/document.js";
 import { applySuppressions } from "./suppressions.js";
 import { VERSION } from "../version.js";
 import { discoverFiles } from "./files.js";
 import { LintExecutionError, throwIfAborted } from "./errors.js";
-import { applyFixes, selectFixes } from "./fixes.js";
 import { compareText } from "./ordering.js";
-import { runFileRules, runProjectRules } from "./rule-execution.js";
+import { runProjectRules } from "./rule-execution.js";
+import { processOne, type ProcessedFile, type SourceFile } from "./process-file.js";
 
 export { LintExecutionError } from "./errors.js";
-
-interface SourceFile {
-  readonly absolutePath: string;
-  readonly displayPath: string;
-  source: string;
-}
-
-interface ProcessedFile {
-  readonly file: SourceFile;
-  readonly document?: LintDocument;
-  readonly diagnostics: readonly Diagnostic[];
-  readonly appliedFixes: readonly RuleFix[];
-  readonly output?: string;
-}
 
 export async function lintText(source: string, options: LintOptions = {}): Promise<LintResult> {
   const cwd = resolve(options.cwd ?? process.cwd());
@@ -115,84 +100,6 @@ async function processFiles(
     const filtered = applySuppressions(item.document, diagnostics, reportUnused, unusedSeverity);
     return { ...item, diagnostics: filtered };
   });
-}
-
-async function processOne(
-  file: SourceFile,
-  loaded: LoadedConfig,
-  cwd: string,
-  options: LintOptions,
-  allowFixes: boolean
-): Promise<ProcessedFile> {
-  throwIfAborted(options.signal);
-  const effective = effectiveConfig(loaded, file.displayPath, cwd);
-  const canFix = allowFixes && options.fix === true;
-  const maxPasses = loaded.config.maxFixPasses ?? 10;
-  let currentSource = file.source;
-  const appliedFixes: RuleFix[] = [];
-  let finalDocument: LintDocument | undefined;
-  let finalDiagnostics: readonly Diagnostic[];
-  let passes = 0;
-
-  for (;;) {
-    const parsed = parseGherkin(currentSource, file.displayPath);
-    if (!parsed.document) {
-      if (currentSource !== file.source) {
-        throw new LintExecutionError(`Autofix produced invalid Gherkin for ${file.displayPath}; no files were changed.`);
-      }
-      finalDocument = undefined;
-      finalDiagnostics = parsed.errors.map((error) => ({
-        filePath: file.displayPath,
-        ruleId: "parsing-error",
-        severity: "error",
-        message: error.message,
-        start: error.location,
-        end: { line: error.location.line, column: error.location.column + 1 }
-      }));
-      break;
-    }
-    finalDocument = parsed.document;
-    finalDiagnostics = await runFileRules(parsed.document, loaded, effective.rules, options.signal);
-    if (!canFix || passes >= maxPasses) break;
-
-    const activeDiagnostics = applySuppressions(parsed.document, finalDiagnostics, false);
-    const selected = selectFixes(activeDiagnostics, file.displayPath);
-    if (selected.conflicts.length > 0) {
-      finalDiagnostics = [...finalDiagnostics, ...selected.conflicts];
-      break;
-    }
-    if (selected.fixes.length === 0) break;
-    currentSource = applyFixes(currentSource, selected.fixes);
-    appliedFixes.push(...selected.fixes);
-    passes += 1;
-  }
-
-  if (canFix && passes >= maxPasses && finalDocument && selectFixes(finalDiagnostics, file.displayPath).fixes.length > 0) {
-    const line = finalDiagnostics.find((diagnostic) => diagnostic.fix)?.start.line ?? 1;
-    finalDiagnostics = [...finalDiagnostics, {
-      filePath: file.displayPath,
-      ruleId: "fix-pass-limit",
-      severity: "error",
-      message: `Autofix stopped after ${maxPasses} passes.`,
-      start: { line, column: 1 }
-    }];
-  }
-
-  const dryRun = allowFixes && options.fixDryRun === true;
-  let dryFixes: RuleFix[] = [];
-  if (dryRun && finalDocument) {
-    const selected = selectFixes(applySuppressions(finalDocument, finalDiagnostics, false), file.displayPath);
-    dryFixes = selected.fixes;
-    finalDiagnostics = [...finalDiagnostics, ...selected.conflicts];
-  }
-  const output = currentSource !== file.source ? currentSource : undefined;
-  return {
-    file,
-    ...(finalDocument ? { document: finalDocument } : {}),
-    diagnostics: finalDiagnostics,
-    appliedFixes: dryRun ? dryFixes : appliedFixes,
-    ...(output !== undefined ? { output } : {})
-  };
 }
 
 function buildResult(processed: readonly ProcessedFile[], options: LintOptions): LintResult {
