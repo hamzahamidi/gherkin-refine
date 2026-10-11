@@ -1,6 +1,7 @@
 import type { Scenario, Tag } from "@cucumber/messages";
 import type { LintDocument } from "../../types.js";
 import { forEachChild, forEachStep } from "../../parser/document.js";
+import type { ValidatedOptions } from "../define.js";
 import { isRecord, isStringArray } from "../helpers.js";
 
 export const NAME_LENGTH_KEYS = ["Feature", "Rule", "Scenario", "Step"] as const;
@@ -38,8 +39,8 @@ export const tagListOptions = (value: unknown): value is { tags?: string[]; patt
     return false;
   }
 };
-export function tagMatcher(options: unknown): (name: string) => boolean {
-  const { tags = [], patterns = [] } = options as { tags?: string[]; patterns?: string[] };
+export function tagMatcher(options: ValidatedOptions<typeof tagListOptions>): (name: string) => boolean {
+  const { tags = [], patterns = [] } = options;
   const expressions = patterns.map((pattern) => new RegExp(pattern));
   return (name) => tags.includes(name) || expressions.some((expression) => expression.test(name));
 }

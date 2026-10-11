@@ -2,9 +2,10 @@ import type { Background, Scenario, Step, Tag } from "@cucumber/messages";
 import type { RuleModule } from "../../types.js";
 import { INDENTATION_DEFAULTS, INDENTATION_KEYS, indentationFix, keywordKey, tagsByLine } from "./helpers.js";
 import { isRecord, lineDiagnostic, ruleDocs } from "../helpers.js";
+import { defineRule } from "../define.js";
 
 export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
-  indentation: {
+  indentation: defineRule({
     meta: {
       description: "Require configured indentation for Feature, Background, Rule, Scenario, step, Examples, and tag lines; content inside a Rule is checked when `rule content` sets its extra indentation.",
       category: "formatting",
@@ -19,8 +20,7 @@ export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
-      const configured = options as Readonly<Record<string, number>>;
-      const levels: Record<string, number> = { ...INDENTATION_DEFAULTS, ...configured };
+      const levels: Record<string, number> = { ...INDENTATION_DEFAULTS, ...options };
       levels["feature tag"] ??= levels.Feature as number;
       levels["scenario tag"] ??= levels.Scenario as number;
       const test = (location: { line: number; column?: number }, type: string, offset = 0) => {
@@ -35,7 +35,7 @@ export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
       const testSteps = (steps: readonly Step[], offset: number) => {
         for (const step of steps) {
           const key = keywordKey(step.keyword, document.language) ?? "";
-          test(step.location, key in configured ? key : "Step", offset);
+          test(step.location, key in options ? key : "Step", offset);
         }
       };
       const testTags = (tags: readonly Tag[], type: string, offset = 0) => {
@@ -57,7 +57,7 @@ export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
           }
         }
       };
-      const ruleContent = configured["rule content"];
+      const ruleContent = options["rule content"];
       test(feature.location, "Feature");
       testTags(feature.tags, "feature tag");
       for (const child of feature.children) {
@@ -70,5 +70,5 @@ export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
         }
       }
     }
-  },
+  }),
 };

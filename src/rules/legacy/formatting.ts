@@ -1,8 +1,9 @@
 import type { RuleModule } from "../../types.js";
 import { lineDiagnostic, ruleDocs, trailingRunStart } from "../helpers.js";
+import { defineRule } from "../define.js";
 
 export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
-  "new-line-at-eof": {
+  "new-line-at-eof": defineRule({
     meta: {
       description: "Require or disallow a line break at the end of the file.",
       category: "formatting",
@@ -23,5 +24,5 @@ export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
         report({ ...lineDiagnostic(document, line, "new-line-at-eof", "New line at EOF(end of file) is not allowed."), fix: { range: [trailingStart, document.source.length], text: "" } });
       }
     }
-  },
+  }),
 };

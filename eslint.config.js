@@ -14,6 +14,15 @@ export default tseslint.config(
     }
   },
   {
+    files: ["src/rules/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "TSAsExpression[expression.name='options']",
+        message: "Type options through validateOptions and defineRule instead of a cast."
+      }]
+    }
+  },
+  {
     ignores: ["dist/**", "node_modules/**", "docs/.vitepress/cache/**", "docs/.vitepress/dist/**"]
   }
 );
