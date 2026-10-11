@@ -9,3 +9,5 @@ export function defineRule<TOptions = unknown>(rule: RuleModule<TOptions>): Rule
   }
   return rule;
 }
+
+export type ValidatedOptions<TGuard> = TGuard extends (value: unknown) => value is infer TOptions ? TOptions : never;

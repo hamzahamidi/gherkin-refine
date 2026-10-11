@@ -2,7 +2,7 @@ import type { RuleModule } from "../../types.js";
 import { forEachScenario } from "../../parser/document.js";
 import { defineRule } from "../define.js";
 import { DOCS_URL, lineDiagnostic, rangeDiagnostic, ruleDocs } from "../helpers.js";
-import { featureSizeOptions, outlinePlaceholders, scenarioSizeOptions, tagGroups, type ScenarioSizeOptions } from "./helpers.js";
+import { featureSizeOptions, outlinePlaceholders, scenarioSizeOptions, tagGroups } from "./helpers.js";
 
 export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
   "unused-disable-directive": {
@@ -102,7 +102,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     }
   },
 
-  "scenario-size": defineRule<ScenarioSizeOptions>({
+  "scenario-size": defineRule({
     meta: {
       description: "Limit the number of steps in a Scenario.",
       category: "structure",
@@ -121,7 +121,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     }
   }),
 
-  "background-size": {
+  "background-size": defineRule({
     meta: {
       description: "Limit the number of steps in Feature and Rule Backgrounds.",
       category: "structure",
@@ -132,7 +132,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     },
     validateOptions: scenarioSizeOptions,
     run({ document, options, report }) {
-      const maxSteps = (options as { maxSteps: number }).maxSteps;
+      const { maxSteps } = options;
       const feature = document.feature;
       if (!feature) return;
       for (const child of feature.children) {
@@ -147,9 +147,9 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
         }
       }
     }
-  },
+  }),
 
-  "feature-size": {
+  "feature-size": defineRule({
     meta: {
       description: "Limit the number of Scenarios in a Feature, including Scenarios under Rules, optionally counting each Examples row.",
       category: "structure",
@@ -162,7 +162,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
-      const { maxScenarios, countOutlineExamples = false } = options as { maxScenarios: number; countOutlineExamples?: boolean };
+      const { maxScenarios, countOutlineExamples = false } = options;
       let count = 0;
       forEachScenario(document, (scenario) => {
         count += countOutlineExamples && scenario.examples.length > 0
@@ -173,5 +173,5 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
         report(lineDiagnostic(document, feature.location.line, "feature-size", `Feature contains ${count} Scenarios; configured maximum is ${maxScenarios}.`));
       }
     }
-  },
+  }),
 };

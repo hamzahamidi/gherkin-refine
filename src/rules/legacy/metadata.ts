@@ -5,9 +5,10 @@ import { forEachScenario } from "../../parser/document.js";
 import { FILE_NAME_STYLES } from "./case-style.js";
 import { isValidPattern, keywordKey, nodeType, RESTRICTED_PATTERN_KEYS } from "./helpers.js";
 import { isRecord, isStringArray, lineDiagnostic, ruleDocs } from "../helpers.js";
+import { defineRule } from "../define.js";
 
 export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
-  "required-tags": {
+  "required-tags": defineRule({
     meta: {
       description: "Require every Scenario to have a tag matching each configured regular expression.",
       category: "tags",
@@ -21,7 +22,7 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
       && (value.ignoreUntagged === undefined || typeof value.ignoreUntagged === "boolean")
       && (value.tags === undefined || (isStringArray(value.tags) && value.tags.every(isValidPattern))),
     run({ document, options, report }) {
-      const { tags = [], ignoreUntagged = true } = options as { tags?: string[]; ignoreUntagged?: boolean };
+      const { tags = [], ignoreUntagged = true } = options;
       const required = tags.map((pattern) => [pattern, new RegExp(pattern)] as const);
       forEachScenario(document, (scenario) => {
         if (ignoreUntagged && scenario.tags.length === 0) return;
@@ -31,9 +32,9 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
         }
       });
     }
-  },
+  }),
 
-  "no-restricted-patterns": {
+  "no-restricted-patterns": defineRule({
     meta: {
       description: "Disallow case-insensitive regular expressions in Feature, Background, and Scenario names, descriptions, and steps.",
       category: "naming",
@@ -47,8 +48,7 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
-      const configured = options as Readonly<Record<string, readonly string[]>>;
-      const compile = (key: string) => [...(configured[key] ?? []), ...(configured.Global ?? [])].map((pattern) => new RegExp(pattern, "i"));
+      const compile = (key: string) => [...(options[key] ?? []), ...(options.Global ?? [])].map((pattern) => new RegExp(pattern, "i"));
       const patterns: Readonly<Record<string, readonly RegExp[]>> = {
         feature: compile("Feature"), background: compile("Background"), scenario: compile("Scenario"), scenarioOutline: compile("ScenarioOutline"), rule: compile("Rule")
       };
@@ -79,7 +79,7 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
         }
       }
     }
-  },
+  }),
 
   "only-one-when": {
     meta: {
@@ -99,7 +99,7 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
     }
   },
 
-  "file-name": {
+  "file-name": defineRule({
     meta: {
       description: "Require feature file names in a configured case style.",
       category: "naming",
@@ -108,13 +108,13 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["checkout_flow.feature with PascalCase"],
       documentation: ruleDocs("file-name")
     },
-    validateOptions: (value: unknown): value is { style: string } =>
+    validateOptions: (value: unknown): value is { style?: string } =>
       isRecord(value) && Object.keys(value).every((key) => key === "style") && (value.style === undefined || (typeof value.style === "string" && value.style in FILE_NAME_STYLES)),
     run({ document, options, report }) {
-      const style = (options as { style?: string }).style ?? "PascalCase";
+      const style = options.style ?? "PascalCase";
       const name = basename(document.filePath.replaceAll("\\", "/"), ".feature");
       const expected = (FILE_NAME_STYLES[style] as (value: string) => string)(name);
       if (name !== expected) report(lineDiagnostic(document, 1, "file-name", `File names should be written in ${style} e.g. "${expected}.feature".`));
     }
-  },
+  }),
 };

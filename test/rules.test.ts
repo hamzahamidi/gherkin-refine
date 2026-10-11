@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { lintFiles, lintText } from "../src/index.js";
+import { fileRules, lintFiles, lintText, projectRules } from "../src/index.js";
 import { forEachStep, parseGherkin } from "../src/parser/document.js";
 
 const temporaryDirectories: string[] = [];
@@ -26,6 +26,14 @@ function docStringContents(source: string): string[] {
   });
   return contents;
 }
+
+describe("built-in rule options", () => {
+  it("accept their own defaultOptions", () => {
+    const rules = Object.entries({ ...fileRules, ...projectRules }).filter(([, rule]) => rule.validateOptions && rule.meta.defaultOptions !== undefined);
+    expect(rules.length).toBeGreaterThan(10);
+    expect(rules.filter(([, rule]) => !rule.validateOptions?.(rule.meta.defaultOptions)).map(([id]) => id)).toEqual([]);
+  });
+});
 
 describe("opt in rule behavior", () => {
   it.each(["", "# comment only\n"])("runs every file rule on a featureless document: %j", async source => {
