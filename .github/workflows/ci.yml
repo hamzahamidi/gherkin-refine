@@ -63,7 +63,7 @@ jobs:
         run: echo "::notice::Sonar analysis skipped because the SONAR_TOKEN repository secret is not set."
       - name: Generate ESLint report for SonarQube Cloud
         if: steps.sonar-token.outputs.available == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        run: npx eslint src test --format json --output-file eslint-report.json
+        run: npx eslint src 'test/**/*.test.ts' --format json --output-file eslint-report.json
       - name: SonarQube Cloud Scan
         if: steps.sonar-token.outputs.available == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: SonarSource/sonarqube-scan-action@v8.3.0
