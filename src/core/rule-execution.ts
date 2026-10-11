@@ -10,7 +10,7 @@ export async function runFileRules(
   signal?: AbortSignal
 ): Promise<Diagnostic[]> {
   const diagnostics: Diagnostic[] = [];
-  for await (const [ruleId, rule] of [...loaded.fileRules.entries()].sort(([left], [right]) => compareText(left, right))) {
+  for (const [ruleId, rule] of [...loaded.fileRules.entries()].sort(([left], [right]) => compareText(left, right))) {
     throwIfAborted(signal);
     const setting = settings.get(ruleId);
     if (!setting || setting.severity === "off") continue;
@@ -30,7 +30,7 @@ export async function runProjectRules(
   if (documents.length === 0) return diagnostics;
 
   const settingsByFile = new Map(documents.map((document) => [document.filePath, effectiveConfig(loaded, document.filePath, cwd).rules]));
-  for await (const [ruleId, rule] of [...loaded.projectRules.entries()].sort(([left], [right]) => compareText(left, right))) {
+  for (const [ruleId, rule] of [...loaded.projectRules.entries()].sort(([left], [right]) => compareText(left, right))) {
     throwIfAborted(signal);
     const settings = documents.flatMap((document) => {
       const setting = settingsByFile.get(document.filePath)?.get(ruleId);
