@@ -1,0 +1,71 @@
+import type { Diagnostic, RuleFix } from "../types.js";
+import { LintExecutionError } from "./errors.js";
+import { compareText } from "./ordering.js";
+
+export function selectFixes(diagnostics: readonly Diagnostic[], filePath: string): { fixes: RuleFix[]; conflicts: Diagnostic[] } {
+  const candidates = diagnostics.flatMap((diagnostic) => diagnostic.fix ? [{ diagnostic, fix: diagnostic.fix }] : []);
+  candidates.sort((left, right) => left.fix.range[0] - right.fix.range[0] || left.fix.range[1] - right.fix.range[1] || compareText(left.diagnostic.ruleId, right.diagnostic.ruleId));
+  const conflicting = new Set<number>();
+  for (let left = 0; left < candidates.length; left += 1) {
+    const first = candidates[left];
+    if (!first) continue;
+    for (let right = left + 1; right < candidates.length; right += 1) {
+      const second = candidates[right];
+      if (!second) continue;
+      if (!fixesOverlap(first.fix, second.fix)) continue;
+      conflicting.add(left);
+      conflicting.add(right);
+    }
+  }
+  const fixes: RuleFix[] = [];
+  const conflicts: Diagnostic[] = [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    if (!candidate) continue;
+    if (!conflicting.has(index)) {
+      fixes.push(candidate.fix);
+      continue;
+    }
+    conflicts.push({
+      filePath,
+      ruleId: "fix-conflict",
+      severity: "error",
+      message: `Autofix from ${candidate.diagnostic.ruleId} overlaps another proposed edit.`,
+      start: candidate.diagnostic.start,
+      data: { conflictingRule: candidate.diagnostic.ruleId }
+    });
+  }
+  return { fixes, conflicts: dedupeDiagnostics(conflicts) };
+}
+
+export function applyFixes(source: string, fixes: readonly RuleFix[]): string {
+  let output = source;
+  for (const fix of [...fixes].sort((left, right) => right.range[0] - left.range[0] || right.range[1] - left.range[1])) {
+    if (fix.range[0] < 0 || fix.range[1] < fix.range[0] || fix.range[1] > output.length) {
+      throw new LintExecutionError(`Autofix range ${fix.range.join(":")} is outside the source file.`);
+    }
+    output = output.slice(0, fix.range[0]) + fix.text + output.slice(fix.range[1]);
+  }
+  return output;
+}
+
+function fixesOverlap(left: RuleFix, right: RuleFix): boolean {
+  const [leftStart, leftEnd] = left.range;
+  const [rightStart, rightEnd] = right.range;
+  const leftInsert = leftStart === leftEnd;
+  const rightInsert = rightStart === rightEnd;
+  if (leftInsert && rightInsert) return leftStart === rightStart;
+  if (leftInsert) return leftStart >= rightStart && leftStart <= rightEnd;
+  if (rightInsert) return rightStart >= leftStart && rightStart <= leftEnd;
+  return leftStart < rightEnd && rightStart < leftEnd;
+}
+
+function dedupeDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  const seen = new Set<string>();
+  return diagnostics.filter((diagnostic) => {
+    const key = `${diagnostic.filePath}:${diagnostic.start.line}:${diagnostic.start.column}:${diagnostic.ruleId}:${diagnostic.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
