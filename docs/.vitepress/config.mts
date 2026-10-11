@@ -2,6 +2,8 @@ import { readdirSync } from "node:fs";
 import { defineConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
+const ANALYTICS_ID = "G-TH8GG8HPH6";
+
 const ruleIds = readdirSync(new URL("../rules", import.meta.url))
   .filter((name) => name.endsWith(".md"))
   .map((name) => name.slice(0, -".md".length))
@@ -14,6 +16,10 @@ export default withMermaid(defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   sitemap: { hostname: "https://hamidihamza.com/gherkin-refine/" },
+  head: [
+    ["script", { async: "", src: `https://www.googletagmanager.com/gtag/js?id=${ANALYTICS_ID}` }],
+    ["script", {}, `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ANALYTICS_ID}');`]
+  ],
   themeConfig: {
     nav: [
       { text: "Getting started", link: "/getting-started" },
