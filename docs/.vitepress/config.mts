@@ -26,6 +26,7 @@ export default defineConfig({
         items: [
           { text: "Getting started", link: "/getting-started" },
           { text: "Migrate from gherkin-lint", link: "/migration" },
+          { text: "Compare with gherkin-lint", link: "/comparison" },
           { text: "Configuration", link: "/configuration" },
           { text: "Plugins", link: "/plugins" },
           { text: "AI agent integration", link: "/agent-integration" }
