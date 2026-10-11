@@ -111,6 +111,21 @@ function onlyWhitespaceSinceLineStart(source: string, index: number): boolean {
   return true;
 }
 
+interface ContainerChild {
+  readonly background?: Background;
+  readonly scenario?: Scenario;
+  readonly rule?: Rule;
+}
+
+export function forEachChild(feature: Feature, visitor: (child: ContainerChild, rule?: Rule) => void): void {
+  for (const child of feature.children) {
+    visitor(child);
+    if (child.rule) {
+      for (const nested of child.rule.children) visitor(nested, child.rule);
+    }
+  }
+}
+
 export function forEachRule(document: LintDocument, visitor: RuleVisitor<Rule>): void {
   const feature = document.feature;
   if (!feature) return;
@@ -122,47 +137,23 @@ export function forEachRule(document: LintDocument, visitor: RuleVisitor<Rule>):
 export function forEachScenario(document: LintDocument, visitor: RuleVisitor<Scenario>): void {
   const feature = document.feature;
   if (!feature) return;
-  for (const child of feature.children) {
-    if (child.scenario) visitor(child.scenario, { feature, scenario: child.scenario });
-    if (child.rule) {
-      for (const nested of child.rule.children) {
-        if (nested.scenario) visitor(nested.scenario, { feature, rule: child.rule, scenario: nested.scenario });
-      }
-    }
-  }
+  forEachChild(feature, ({ scenario }, rule) => {
+    if (scenario) visitor(scenario, { feature, ...(rule ? { rule } : {}), scenario });
+  });
 }
 
 export function forEachStep(document: LintDocument, visitor: RuleVisitor<Step>): void {
   const feature = document.feature;
   if (!feature) return;
-  for (const child of feature.children) {
-    if (child.background) visitBackgroundSteps(feature, child.background, visitor);
-    if (child.scenario) visitScenarioSteps(feature, child.scenario, visitor);
-    if (child.rule) {
-      for (const nested of child.rule.children) {
-        if (nested.background) visitBackgroundSteps(feature, nested.background, visitor, child.rule);
-        if (nested.scenario) visitScenarioSteps(feature, nested.scenario, visitor, child.rule);
-      }
+  forEachChild(feature, ({ background, scenario }, rule) => {
+    const parent = { feature, ...(rule ? { rule } : {}) };
+    if (background) {
+      for (const step of background.steps) visitor(step, { ...parent, background, step });
     }
-  }
-}
-
-function visitBackgroundSteps(
-  feature: Feature,
-  background: Background,
-  visitor: RuleVisitor<Step>,
-  rule?: Rule
-): void {
-  for (const step of background.steps) visitor(step, { feature, ...(rule ? { rule } : {}), background, step });
-}
-
-function visitScenarioSteps(
-  feature: Feature,
-  scenario: Scenario,
-  visitor: RuleVisitor<Step>,
-  rule?: Rule
-): void {
-  for (const step of scenario.steps) visitor(step, { feature, ...(rule ? { rule } : {}), scenario, step });
+    if (scenario) {
+      for (const step of scenario.steps) visitor(step, { ...parent, scenario, step });
+    }
+  });
 }
 
 export function forEachExamples(document: LintDocument, visitor: RuleVisitor<Examples>): void {
@@ -175,17 +166,12 @@ export function forEachTag(document: LintDocument, visitor: RuleVisitor<Tag>): v
   const feature = document.feature;
   if (!feature) return;
   for (const tag of feature.tags) visitor(tag, { feature, tag });
-  for (const child of feature.children) {
-    if (child.rule) {
-      for (const tag of child.rule.tags) visitor(tag, { feature, rule: child.rule, tag });
+  forEachChild(feature, ({ rule: childRule, scenario }, rule) => {
+    if (childRule) {
+      for (const tag of childRule.tags) visitor(tag, { feature, rule: childRule, tag });
     }
-    if (child.scenario) visitScenarioTags(feature, child.scenario, visitor);
-    if (child.rule) {
-      for (const nested of child.rule.children) {
-        if (nested.scenario) visitScenarioTags(feature, nested.scenario, visitor, child.rule);
-      }
-    }
-  }
+    if (scenario) visitScenarioTags(feature, scenario, visitor, rule);
+  });
 }
 
 function visitScenarioTags(
@@ -194,9 +180,10 @@ function visitScenarioTags(
   visitor: RuleVisitor<Tag>,
   rule?: Rule
 ): void {
-  for (const tag of scenario.tags) visitor(tag, { feature, ...(rule ? { rule } : {}), scenario, tag });
+  const parent = { feature, ...(rule ? { rule } : {}), scenario };
+  for (const tag of scenario.tags) visitor(tag, { ...parent, tag });
   for (const examples of scenario.examples) {
-    for (const tag of examples.tags) visitor(tag, { feature, ...(rule ? { rule } : {}), scenario, examples, tag });
+    for (const tag of examples.tags) visitor(tag, { ...parent, examples, tag });
   }
 }
 
