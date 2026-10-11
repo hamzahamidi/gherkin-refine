@@ -29,8 +29,9 @@ function docStringContents(source: string): string[] {
 
 describe("built-in rule options", () => {
   it("accept their own defaultOptions", () => {
-    const rules = Object.entries({ ...fileRules, ...projectRules }).filter(([, rule]) => rule.validateOptions && rule.meta.defaultOptions !== undefined);
+    const rules = Object.entries({ ...fileRules, ...projectRules }).filter(([, rule]) => rule.meta.defaultOptions !== undefined);
     expect(rules.length).toBeGreaterThan(10);
+    expect(rules.filter(([, rule]) => !rule.validateOptions).map(([id]) => id)).toEqual([]);
     expect(rules.filter(([, rule]) => !rule.validateOptions?.(rule.meta.defaultOptions)).map(([id]) => id)).toEqual([]);
   });
 });
