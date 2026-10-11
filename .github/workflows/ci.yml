@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -39,12 +40,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
           cache: npm
       - run: npm ci
       - run: npm run coverage
+      - name: Check Sonar token
+        id: sonar-token
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Report missing Sonar token
+        if: steps.sonar-token.outputs.available != 'true'
+        run: echo "::notice::Sonar analysis skipped because the SONAR_TOKEN repository secret is not set."
+      - name: SonarQube Cloud Scan
+        if: steps.sonar-token.outputs.available == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=hamzahamidi
+            -Dsonar.projectKey=hamzahamidi_gherkin-refine
+            -Dsonar.sources=src
+            -Dsonar.tests=test
+            -Dsonar.test.inclusions=test/**/*.test.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
       - name: Upload coverage report
         if: always() && hashFiles('coverage/lcov.info') != ''
         uses: actions/upload-artifact@v7
