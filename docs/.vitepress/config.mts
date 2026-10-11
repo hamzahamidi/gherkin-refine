@@ -1,12 +1,13 @@
 import { readdirSync } from "node:fs";
 import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
 const ruleIds = readdirSync(new URL("../rules", import.meta.url))
   .filter((name) => name.endsWith(".md"))
   .map((name) => name.slice(0, -".md".length))
   .sort();
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: "Gherkin Refine",
   description: "A fast, deterministic Gherkin linter and safe fixer for Node.js, CI, and AI coding agents.",
   base: "/gherkin-refine/",
@@ -56,4 +57,4 @@ export default defineConfig({
     },
     footer: { message: "Released under the MIT License." }
   }
-});
+}));

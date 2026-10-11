@@ -48,6 +48,30 @@ describe("project plugin execution", () => {
     ]);
   });
 
+  it("runs once with every document and the options of the first file where it is enabled", async () => {
+    const { cwd, config } = await fixture(`export const projectRules = { check: {
+      meta: { ...${meta}, defaultOptions: { label: "default" } },
+      validateOptions(options) { return typeof options.label === "string"; },
+      run({ documents, options, report }) {
+        for (const document of documents) {
+          report({ filePath: document.filePath, ruleId: "ignored", severity: "error", message: options.label + " of " + documents.length, start: { line: 1, column: 1 } });
+        }
+      }
+    } };`);
+    for (const name of ["a", "b", "c"]) await writeFile(join(cwd, `${name}.feature`), `Feature: ${name}\n`);
+    const result = await lintFiles(["."], { cwd, config: {
+      ...config, rules: { "boundary/check": ["error", { label: "base" }] },
+      overrides: [
+        { files: "a.feature", rules: { "boundary/check": "off" } },
+        { files: "b.feature", rules: { "boundary/check": ["error", { label: "b" }] } },
+        { files: "c.feature", rules: { "boundary/check": ["warn", { label: "c" }] } }
+      ]
+    } });
+    expect(result.results.map(file => file.diagnostics.map(d => [d.message, d.severity]))).toEqual([
+      [], [["b of 3", "error"]], [["b of 3", "warn"]]
+    ]);
+  });
+
   it.each(["new Error('project failed')", "'project failed'"])("preserves the cause of a rejected project rule: %s", async (thrown) => {
     const { cwd, config } = await fixture(`export default { projectRules: { check: { meta: ${meta}, run() { throw ${thrown}; } } } };`);
     const promise = lintText("Feature: F\n", { cwd, config: { ...config, rules: { "boundary/check": "error" } } });
