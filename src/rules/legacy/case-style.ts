@@ -1,5 +1,5 @@
 export const FILE_NAME_STYLES: Readonly<Record<string, (name: string) => string>> = {
-  PascalCase: (name) => startCase(name).replace(/ /g, ""),
+  PascalCase: (name) => startCase(name).replaceAll(" ", ""),
   "Title Case": (name) => startCase(name),
   camelCase: (name) => caseWords(name).reduce((result, word, index) => result + (index ? upperFirst(word.toLowerCase()) : word.toLowerCase()), ""),
   "kebab-case": (name) => caseWords(name).map((word) => word.toLowerCase()).join("-"),

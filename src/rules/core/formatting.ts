@@ -53,7 +53,9 @@ export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
         if (blankCount <= 1) continue;
         const lineNumber = index + 1;
         const range = document.rangeForLine(lineNumber);
-        const newlineEnd = document.source.startsWith("\r\n", range[1]) ? range[1] + 2 : range[1] + (range[1] < document.source.length ? 1 : 0);
+        let newlineEnd = range[1];
+        if (document.source.startsWith("\r\n", newlineEnd)) newlineEnd += 2;
+        else if (newlineEnd < document.source.length) newlineEnd += 1;
         const fix: RuleFix = { range: [range[0], newlineEnd], text: "" };
         report(rangeDiagnostic(document, lineNumber, 1, Math.max(1, line.length), "no-extra-blank-lines", "Unexpected consecutive blank line.", fix));
       }

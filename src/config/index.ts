@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { LintConfig, ProjectRuleModule, RuleModule, Severity } from "../types.js";
@@ -126,7 +126,6 @@ export async function findConfig(cwd: string): Promise<string | undefined> {
     for (const name of directory === resolve(cwd) ? [...CONFIG_FILES, LEGACY_CONFIG_FILE] : CONFIG_FILES) {
       const candidate = resolve(directory, name);
       try {
-        const { access } = await import("node:fs/promises");
         await access(candidate);
         return candidate;
       } catch {
