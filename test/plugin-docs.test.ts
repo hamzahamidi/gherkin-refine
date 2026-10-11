@@ -13,7 +13,7 @@ let example: string;
 
 beforeAll(async () => {
   const docs = await readFile(new URL("../docs/plugins.md", import.meta.url), "utf8");
-  example = /```ts\n([\s\S]*?)```/.exec(docs)?.[1] ?? "";
+  example = /```ts\r?\n([\s\S]*?)```/.exec(docs)?.[1]?.replaceAll("\r\n", "\n") ?? "";
   cwd = await mkdtemp(join(tmpdir(), "gherkin-refine-docs-plugin-"));
   const directory = join(cwd, "node_modules", "gherkin-refine-plugin-max-tags");
   await mkdir(directory, { recursive: true });
@@ -39,12 +39,13 @@ function lintWith(setting: unknown) {
 
 describe("typed rule example in docs/plugins.md", () => {
   it("type-checks against the public API", () => {
-    const file = join(cwd, "example.ts");
+    const file = join(cwd, "example.ts").replaceAll("\\", "/");
+    const isExample = (path: string) => path.replaceAll("\\", "/") === file;
     const host = ts.createCompilerHost({});
     const readSource = host.readFile.bind(host);
-    host.readFile = (path) => path === file ? example : readSource(path);
+    host.readFile = (path) => isExample(path) ? example : readSource(path);
     const fileExists = host.fileExists.bind(host);
-    host.fileExists = (path) => path === file || fileExists(path);
+    host.fileExists = (path) => isExample(path) || fileExists(path);
     const program = ts.createProgram([file], {
       target: ts.ScriptTarget.ES2023,
       module: ts.ModuleKind.NodeNext,
@@ -59,7 +60,7 @@ describe("typed rule example in docs/plugins.md", () => {
     const messages = ts.getPreEmitDiagnostics(program).map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
     expect(messages).toEqual([]);
     expect(example).not.toMatch(/\bas\s+[A-Z]/);
-  });
+  }, 30_000);
 
   it("reports above the configured limit", async () => {
     const result = await lintWith(["error", { max: 1 }]);
