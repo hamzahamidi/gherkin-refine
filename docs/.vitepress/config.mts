@@ -15,9 +15,9 @@ export default defineConfig({
   sitemap: { hostname: "https://hamidihamza.com/gherkin-refine/" },
   themeConfig: {
     nav: [
-      { text: "Guide", link: "/getting-started" },
-      { text: "Rules", link: "/rules" },
+      { text: "Getting started", link: "/getting-started" },
       { text: "Migrate from gherkin-lint", link: "/migration" },
+      { text: "Rules", link: "/rules" },
       { text: "Changelog", link: "https://github.com/hamzahamidi/gherkin-refine/blob/main/CHANGELOG.md" }
     ],
     sidebar: [
@@ -25,14 +25,15 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "Getting started", link: "/getting-started" },
+          { text: "Migrate from gherkin-lint", link: "/migration" },
           { text: "Configuration", link: "/configuration" },
           { text: "Plugins", link: "/plugins" },
-          { text: "Migrate from gherkin-lint", link: "/migration" },
           { text: "AI agent integration", link: "/agent-integration" }
         ]
       },
       {
         text: "Rules",
+        collapsed: true,
         items: [{ text: "Overview", link: "/rules" }, ...ruleIds.map((id) => ({ text: id, link: `/rules/${id}` }))]
       },
       {
