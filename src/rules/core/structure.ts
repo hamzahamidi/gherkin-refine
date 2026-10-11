@@ -4,6 +4,12 @@ import { forEachScenario } from "../../parser/document.js";
 import { lineDiagnostic, ruleDocs } from "../helpers.js";
 import { stageName } from "./helpers.js";
 
+const KEYWORD_STAGES: Partial<Record<StepKeywordType, number>> = {
+  [StepKeywordType.CONTEXT]: 1,
+  [StepKeywordType.ACTION]: 2,
+  [StepKeywordType.OUTCOME]: 3
+};
+
 export const structureRules: Readonly<Record<string, RuleModule<unknown>>> = {
   "logical-keyword-order": {
     meta: {
@@ -19,7 +25,7 @@ export const structureRules: Readonly<Record<string, RuleModule<unknown>>> = {
         for (const step of scenario.steps) {
           const type = step.keywordType;
           if (type === StepKeywordType.CONJUNCTION || type === StepKeywordType.UNKNOWN) continue;
-          const next = type === StepKeywordType.CONTEXT ? 1 : type === StepKeywordType.ACTION ? 2 : type === StepKeywordType.OUTCOME ? 3 : 0;
+          const next = KEYWORD_STAGES[type ?? StepKeywordType.UNKNOWN] ?? 0;
           if (next < stage) {
             report(lineDiagnostic(document, step.location.line, "logical-keyword-order", `Step keyword stage moves backward from ${stageName(stage)} to ${stageName(next)}.`));
           } else {

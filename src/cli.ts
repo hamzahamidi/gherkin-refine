@@ -5,11 +5,12 @@ import { resolve } from "node:path";
 import { effectiveConfig, loadConfig, type LoadedConfig } from "./config/index.js";
 import { migrateLegacyFile } from "./compat/migrate.js";
 import { lintFiles, lintText } from "./core/engine.js";
+import { compareText } from "./core/ordering.js";
 import { formatResult, type FormatterName } from "./formatters/index.js";
 import type { LintOptions, LintResult, RuleMeta, Severity } from "./types.js";
 import { VERSION } from "./version.js";
 
-const VALID_FORMATS: readonly FormatterName[] = ["stylish", "compact", "json", "ndjson", "sarif"];
+const VALID_FORMATS: ReadonlySet<string> = new Set<FormatterName>(["stylish", "compact", "json", "ndjson", "sarif"]);
 
 export async function runCli(argv: readonly string[] = process.argv): Promise<void> {
   const program = new Command();
@@ -102,7 +103,7 @@ async function executeLint(paths: readonly string[], rawOptions: Record<string, 
 
 function validatedFormat(rawOptions: Record<string, unknown>): FormatterName {
   const format = rawOptions.format as FormatterName;
-  if (!VALID_FORMATS.includes(format)) throw new Error(`Unknown output format ${JSON.stringify(rawOptions.format)}.`);
+  if (!VALID_FORMATS.has(format)) throw new Error(`Unknown output format ${JSON.stringify(rawOptions.format)}.`);
   if (rawOptions.fix && rawOptions.fixDryRun) throw new Error("Choose either --fix or --fix-dry-run, not both.");
   return format;
 }
@@ -148,7 +149,7 @@ async function runLint(paths: readonly string[], rawOptions: Record<string, unkn
   if (rawOptions.stdin !== true) return lintFiles(paths, lintOptions);
   if (paths.length > 0) throw new Error("Paths cannot be combined with --stdin.");
   const source = await readStdin();
-  return lintText(source, { ...lintOptions, filePath: String(rawOptions.stdinFilename ?? "<stdin>") });
+  return lintText(source, { ...lintOptions, filePath: typeof rawOptions.stdinFilename === "string" ? rawOptions.stdinFilename : "<stdin>" });
 }
 
 function ruleMetadataOf(loaded: LoadedConfig): Readonly<Record<string, RuleMeta>> {
@@ -232,10 +233,6 @@ async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks).toString("utf8");
-}
-
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 void runCli();

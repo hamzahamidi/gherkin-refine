@@ -1,3 +1,4 @@
 export function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
 }

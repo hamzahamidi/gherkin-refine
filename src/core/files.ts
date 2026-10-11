@@ -1,6 +1,7 @@
 import { lstat, realpath, stat } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { glob } from "glob";
+import { compareText } from "./ordering.js";
 
 const DEFAULT_IGNORES = ["**/.git/**", "**/node_modules/**", "**/dist/**", "**/coverage/**"];
 
@@ -52,8 +53,4 @@ export async function discoverFiles(inputs: readonly string[], cwd: string): Pro
 
 function isMissingPath(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
-}
-
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }

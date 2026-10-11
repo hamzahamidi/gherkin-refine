@@ -2,14 +2,13 @@ import type { RuleModule } from "../types.js";
 import { formattingRules } from "./core/formatting.js";
 import { initialRules } from "./core/initial.js";
 import { namingTagsRules } from "./core/namingTags.js";
-import { projectRules } from "./core/project.js";
 import { structureRules } from "./core/structure.js";
 import { legacyRules } from "./legacy.js";
 
-export { projectRules };
-export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = Object.assign(
-  {}, initialRules, namingTagsRules, structureRules, formattingRules, legacyRules
-);
+export { projectRules } from "./core/project.js";
+export const fileRules: Readonly<Record<string, RuleModule<unknown>>> = {
+  ...initialRules, ...namingTagsRules, ...structureRules, ...formattingRules, ...legacyRules
+};
 
 export const recommendedRules = {
   "no-duplicate-tags": "error",

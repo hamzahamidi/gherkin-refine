@@ -90,6 +90,8 @@ export function docStringContentLines(document: LintDocument): ReadonlySet<numbe
   });
   return contentLines;
 }
+const STAGE_NAMES = ["unknown", "Given", "When", "Then"] as const;
+
 export function stageName(stage: number): string {
-  return stage === 1 ? "Given" : stage === 2 ? "When" : stage === 3 ? "Then" : "unknown";
+  return STAGE_NAMES[stage] ?? "unknown";
 }

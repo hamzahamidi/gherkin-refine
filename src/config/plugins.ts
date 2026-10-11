@@ -8,7 +8,7 @@ import { ConfigError, isRecord, messageOf } from "./errors.js";
 export async function loadPlugins(cwd: string, specifiers: readonly string[]) {
   const require = createRequire(pathToFileURL(resolve(cwd, "gherkin-refine.config.mjs")));
   const loaded = [];
-  for (const specifier of [...new Set(specifiers)]) {
+  for (const specifier of new Set(specifiers)) {
     try {
       const resolved = await resolvePluginPath(cwd, specifier, require);
       const imported = await import(pathToFileURL(resolved).href);
