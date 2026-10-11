@@ -46,7 +46,7 @@ A rule ID is the plugin namespace, a slash, and the rule key. The namespace is t
 
 ## Rule options
 
-`defineRule<Options>()` types `options` in `run` from `validateOptions`, so `run` needs no cast:
+`defineRule<Options>()` types `options` in `run` from `validateOptions`, so `run` needs no cast, and `satisfies` checks `defaultOptions` against the same type:
 
 ```ts
 import { defineRule, forEachScenario, type PluginModule } from "gherkin-refine";
@@ -60,7 +60,7 @@ export const maxScenarioTags = defineRule<MaxTagsOptions>({
     description: "Limit the number of tags on a Scenario.",
     category: "tags",
     recommended: false,
-    defaultOptions: { max: 3 }
+    defaultOptions: { max: 3 } satisfies MaxTagsOptions
   },
   validateOptions: (options): options is MaxTagsOptions =>
     typeof options === "object" && options !== null && "max" in options
@@ -85,7 +85,7 @@ Node strips TypeScript types only outside `node_modules`. A local `.ts` plugin l
 
 ## Project rules
 
-A project rule exports under `projectRules` and checks the whole file set in one call, for example duplicate names across files. It runs once per lint run, after file rules and autofix passes.
+A project rule exports under `projectRules` and checks the whole file set in one call, for example duplicate names across files. It runs once per lint run, after file rules and autofix passes. `defineRule` covers file rules only; type a project rule as `ProjectRuleModule<Options>`, which takes `validateOptions` and `defaultOptions` the same way.
 
 - `documents` holds every linted document that parsed, including files where the rule is off.
 - `report` takes a diagnostic with `filePath`. The engine replaces `ruleId` and `severity`, drops reports for files where the rule is off, and applies each file's severity.
