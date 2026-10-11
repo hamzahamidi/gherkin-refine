@@ -89,9 +89,26 @@ function createLintDocument(source: string, filePath: string, ast: GherkinDocume
   };
 }
 
+const LANGUAGE_HEADER = /#\s*language\s*:\s*([\w-]+)/y;
+
+// Equivalent to /^\s*#\s*language\s*:\s*([\w-]+)/m, written as a scan because that regex is quadratic on long whitespace runs.
 function languageFromHeader(source: string): string | undefined {
-  const match = source.match(/^\s*#\s*language\s*:\s*([\w-]+)/m);
-  return match?.[1];
+  for (let hash = source.indexOf("#"); hash >= 0; hash = source.indexOf("#", hash + 1)) {
+    if (!onlyWhitespaceSinceLineStart(source, hash)) continue;
+    LANGUAGE_HEADER.lastIndex = hash;
+    const match = LANGUAGE_HEADER.exec(source);
+    if (match) return match[1];
+  }
+  return undefined;
+}
+
+function onlyWhitespaceSinceLineStart(source: string, index: number): boolean {
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    const char = source[cursor] ?? "";
+    if (/[\n\r\u2028\u2029]/.test(char)) return true;
+    if (!/\s/.test(char)) return false;
+  }
+  return true;
 }
 
 export function forEachRule(document: LintDocument, visitor: RuleVisitor<Rule>): void {

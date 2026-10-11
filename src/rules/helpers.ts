@@ -22,6 +22,12 @@ export function featureTags(feature: Feature): readonly Tag[] {
   ];
 }
 
+export function trailingRunStart(text: string, isMember: (char: string) => boolean): number {
+  let start = text.length;
+  while (start > 0 && isMember(text[start - 1] ?? "")) start -= 1;
+  return start;
+}
+
 export function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }

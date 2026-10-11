@@ -47,7 +47,7 @@ function parseDirectives(document: LintDocument): Directive[] {
     const match = comment.text.match(DIRECTIVE);
     if (!match) continue;
     const kind = match[1] as Directive["kind"];
-    const [rulePart, reasonPart] = (match[2] ?? "").split(/\s+--\s+/, 2);
+    const [rulePart, reasonPart] = (match[2] ?? "").split(/(?<!\s)\s+--\s+/, 2);
     const list = rulePart?.split(/[\s,]+/).map((rule) => rule.trim()).filter(Boolean);
     const rules = list && list.length > 0 ? list : null;
     const reason = reasonPart?.trim();

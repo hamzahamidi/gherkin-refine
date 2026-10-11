@@ -1,5 +1,5 @@
 import type { RuleModule } from "../../types.js";
-import { lineDiagnostic, ruleDocs } from "../helpers.js";
+import { lineDiagnostic, ruleDocs, trailingRunStart } from "../helpers.js";
 
 export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
   "new-line-at-eof": {
@@ -19,8 +19,8 @@ export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
       if (!hasLineBreak && options === "yes") {
         report({ ...lineDiagnostic(document, line, "new-line-at-eof", "New line at EOF(end of file) is required."), fix: { range: [document.source.length, document.source.length], text: "\n" } });
       } else if (hasLineBreak && options === "no") {
-        const trailing = document.source.match(/(?:\r\n|\n|\r)+$/)?.[0] ?? "";
-        report({ ...lineDiagnostic(document, line, "new-line-at-eof", "New line at EOF(end of file) is not allowed."), fix: { range: [document.source.length - trailing.length, document.source.length], text: "" } });
+        const trailingStart = trailingRunStart(document.source, (char) => char === "\n" || char === "\r");
+        report({ ...lineDiagnostic(document, line, "new-line-at-eof", "New line at EOF(end of file) is not allowed."), fix: { range: [trailingStart, document.source.length], text: "" } });
       }
     }
   },
