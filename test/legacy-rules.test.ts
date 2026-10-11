@@ -173,6 +173,11 @@ Feature: F
     expect(await lines("Feature: F\n", "file-name", ["error", { style: "camelCase" }], "features/emoji😀Name.feature")).toEqual([]);
   });
 
+  it.each(["__proto__", "toString", "constructor", "hasOwnProperty"])("rejects the inherited object key %s as a file-name style", async (style) => {
+    await expect(lint("Feature: F\n", { "file-name": ["error", { style }] }, "features/my_file.feature"))
+      .rejects.toThrow('Invalid options for rule "file-name"');
+  });
+
   it("ignores a Background without Scenarios, which no-files-without-scenarios covers", async () => {
     expect(await lines("Feature: F\n  Background:\n    Given x\n", "no-background-only-scenario")).toEqual([]);
   });

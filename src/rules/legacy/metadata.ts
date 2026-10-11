@@ -2,7 +2,7 @@ import type { Background, Feature, Rule, Scenario } from "@cucumber/messages";
 import type { RuleModule } from "../../types.js";
 import { basename } from "node:path";
 import { forEachScenario } from "../../parser/document.js";
-import { FILE_NAME_STYLES } from "./case-style.js";
+import { FILE_NAME_STYLES, isFileNameStyle, type FileNameStyle } from "./case-style.js";
 import { isValidPattern, keywordKey, nodeType, RESTRICTED_PATTERN_KEYS } from "./helpers.js";
 import { isRecord, isStringArray, lineDiagnostic, ruleDocs } from "../helpers.js";
 import { defineRule } from "../define.js";
@@ -108,12 +108,12 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["checkout_flow.feature with PascalCase"],
       documentation: ruleDocs("file-name")
     },
-    validateOptions: (value: unknown): value is { style?: string } =>
-      isRecord(value) && Object.keys(value).every((key) => key === "style") && (value.style === undefined || (typeof value.style === "string" && value.style in FILE_NAME_STYLES)),
+    validateOptions: (value: unknown): value is { style?: FileNameStyle } =>
+      isRecord(value) && Object.keys(value).every((key) => key === "style") && (value.style === undefined || isFileNameStyle(value.style)),
     run({ document, options, report }) {
       const style = options.style ?? "PascalCase";
       const name = basename(document.filePath.replaceAll("\\", "/"), ".feature");
-      const expected = (FILE_NAME_STYLES[style] as (value: string) => string)(name);
+      const expected = FILE_NAME_STYLES[style](name);
       if (name !== expected) report(lineDiagnostic(document, 1, "file-name", `File names should be written in ${style} e.g. "${expected}.feature".`));
     }
   }),
