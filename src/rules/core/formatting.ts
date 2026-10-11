@@ -1,5 +1,5 @@
 import type { RuleFix, RuleModule } from "../../types.js";
-import { rangeDiagnostic, ruleDocs } from "../helpers.js";
+import { rangeDiagnostic, ruleDocs, trailingRunStart } from "../helpers.js";
 import { docStringContentLines } from "./helpers.js";
 
 export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
@@ -17,13 +17,13 @@ export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
       for (let index = 0; index < document.lines.length; index += 1) {
         if (protectedLines.has(index + 1)) continue;
         const line = document.lines[index] ?? "";
-        const match = line.match(/[\t ]+$/);
-        if (!match || match.index === undefined) continue;
+        const column = trailingRunStart(line, (char) => char === " " || char === "\t") + 1;
+        const length = line.length + 1 - column;
+        if (length === 0) continue;
         const lineNumber = index + 1;
-        const start = document.offsetAt({ line: lineNumber, column: match.index + 1 });
-        const end = start + match[0].length;
-        const fix: RuleFix = { range: [start, end], text: "" };
-        report(rangeDiagnostic(document, lineNumber, match.index + 1, match[0].length, "no-trailing-whitespace", "Trailing whitespace.", fix));
+        const start = document.offsetAt({ line: lineNumber, column });
+        const fix: RuleFix = { range: [start, start + length], text: "" };
+        report(rangeDiagnostic(document, lineNumber, column, length, "no-trailing-whitespace", "Trailing whitespace.", fix));
       }
     }
   },

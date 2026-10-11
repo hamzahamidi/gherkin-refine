@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 (2026-10-11)
+
+Lints long runs of whitespace or line breaks in linear time. `no-trailing-whitespace`, `new-line-at-eof`, disable directive reasons and the language header lookup took about a minute on a 200,000 character run and now take under half a second, with the same results.
+
 ## 1.3.2 (2026-10-10)
 
 Maps gherkin-lint's `no-unused-variables` to both `no-unused-outline-variables` and `no-undefined-outline-variables`. Both rules read placeholders in the Scenario Outline title as well as in steps and step arguments.
