@@ -2,11 +2,11 @@
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { effectiveConfig, loadConfig } from "./config/index.js";
+import { effectiveConfig, loadConfig, type LoadedConfig } from "./config/index.js";
 import { migrateLegacyFile } from "./compat/migrate.js";
 import { lintFiles, lintText } from "./core/engine.js";
 import { formatResult, type FormatterName } from "./formatters/index.js";
-import type { RuleMeta } from "./types.js";
+import type { LintOptions, LintResult, RuleMeta, Severity } from "./types.js";
 import { VERSION } from "./version.js";
 
 const VALID_FORMATS: readonly FormatterName[] = ["stylish", "compact", "json", "ndjson", "sarif"];
@@ -83,37 +83,54 @@ export async function runCli(argv: readonly string[] = process.argv): Promise<vo
 }
 
 async function executeLint(paths: readonly string[], rawOptions: Record<string, unknown>): Promise<void> {
-  const format = rawOptions.format as FormatterName;
-  if (!VALID_FORMATS.includes(format)) throw new Error(`Unknown output format ${JSON.stringify(rawOptions.format)}.`);
-  if (rawOptions.fix && rawOptions.fixDryRun) throw new Error("Choose either --fix or --fix-dry-run, not both.");
+  const format = validatedFormat(rawOptions);
   const cwd = process.cwd();
   const configPath = typeof rawOptions.config === "string" ? rawOptions.config : undefined;
   await rejectLegacyRuleDirectories(cwd, rawOptions.rulesdir as readonly string[]);
   const ignorePatterns = Array.isArray(rawOptions.ignore) ? rawOptions.ignore as readonly string[] : undefined;
   const loaded = await loadConfig(cwd, configPath, ignorePatterns ? { ignorePatterns } : {});
+  if (runIntrospection(rawOptions, loaded, format, cwd)) return;
 
+  const lintOptions = buildLintOptions(rawOptions, cwd, configPath, ignorePatterns);
+  if (loaded.legacyUnsupported) {
+    process.stderr.write(`warning: .gherkin-lintrc rules not fully checked: ${loaded.legacyUnsupported.join(", ")}. Run "gherkin-refine migrate --dry-run" for details.\n`);
+  }
+  const result = await runLint(paths, rawOptions, lintOptions);
+  process.stdout.write(formatResult(result, format, { cwd, quiet: rawOptions.quiet === true, ruleMetadata: ruleMetadataOf(loaded) }));
+  process.exitCode = exitCodeFor(result, rawOptions.maxWarnings);
+}
+
+function validatedFormat(rawOptions: Record<string, unknown>): FormatterName {
+  const format = rawOptions.format as FormatterName;
+  if (!VALID_FORMATS.includes(format)) throw new Error(`Unknown output format ${JSON.stringify(rawOptions.format)}.`);
+  if (rawOptions.fix && rawOptions.fixDryRun) throw new Error("Choose either --fix or --fix-dry-run, not both.");
+  return format;
+}
+
+function exitCodeFor(result: LintResult, maxWarnings: unknown): number {
+  return result.summary.errors > 0 || result.summary.warnings > Number(maxWarnings ?? Number.POSITIVE_INFINITY) ? 1 : 0;
+}
+
+function runIntrospection(rawOptions: Record<string, unknown>, loaded: LoadedConfig, format: FormatterName, cwd: string): boolean {
   if (rawOptions.listRules) {
     printRuleList(loaded, format, cwd);
-    return;
-  }
-  if (typeof rawOptions.explain === "string") {
+  } else if (typeof rawOptions.explain === "string") {
     printRuleExplanation(loaded, rawOptions.explain, format, cwd);
-    return;
+  } else if (typeof rawOptions.printConfig === "string") {
+    printEffectiveConfig(loaded, rawOptions.printConfig, cwd);
+  } else {
+    return false;
   }
-  if (typeof rawOptions.printConfig === "string") {
-    const filePath = resolve(cwd, rawOptions.printConfig);
-    const effective = effectiveConfig(loaded, filePath, cwd);
-    const output = {
-      filePath: rawOptions.printConfig.replaceAll("\\", "/"),
-      ignored: effective.ignored,
-      plugins: [...loaded.pluginNames.entries()].map(([namespace, packageName]) => ({ namespace, package: packageName })),
-      rules: Object.fromEntries([...effective.rules.entries()].sort(([left], [right]) => compareText(left, right)).map(([id, setting]) => [id, [setting.severity, setting.options ?? {}]]))
-    };
-    process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
-    return;
-  }
+  return true;
+}
 
-  const lintOptions = {
+function buildLintOptions(
+  rawOptions: Record<string, unknown>,
+  cwd: string,
+  configPath: string | undefined,
+  ignorePatterns: readonly string[] | undefined
+): LintOptions {
+  return {
     cwd,
     ...(configPath ? { configPath } : {}),
     ...(typeof rawOptions.maxDiagnostics === "number" ? { maxDiagnostics: rawOptions.maxDiagnostics } : {}),
@@ -125,29 +142,35 @@ async function executeLint(paths: readonly string[], rawOptions: Record<string, 
     ...(rawOptions.reportUnusedDisableDirectives === true ? { reportUnusedDisableDirectives: true } : {}),
     ...(ignorePatterns ? { ignorePatterns } : {})
   };
-  if (loaded.legacyUnsupported) {
-    process.stderr.write(`warning: .gherkin-lintrc rules not fully checked: ${loaded.legacyUnsupported.join(", ")}. Run "gherkin-refine migrate --dry-run" for details.\n`);
-  }
+}
 
-  let result;
-  if (rawOptions.stdin === true) {
-    if (paths.length > 0) throw new Error("Paths cannot be combined with --stdin.");
-    const source = await readStdin();
-    result = await lintText(source, { ...lintOptions, filePath: String(rawOptions.stdinFilename ?? "<stdin>") });
-  } else {
-    result = await lintFiles(paths, lintOptions);
-  }
+async function runLint(paths: readonly string[], rawOptions: Record<string, unknown>, lintOptions: LintOptions): Promise<LintResult> {
+  if (rawOptions.stdin !== true) return lintFiles(paths, lintOptions);
+  if (paths.length > 0) throw new Error("Paths cannot be combined with --stdin.");
+  const source = await readStdin();
+  return lintText(source, { ...lintOptions, filePath: String(rawOptions.stdinFilename ?? "<stdin>") });
+}
 
-  const metadata = Object.fromEntries([
+function ruleMetadataOf(loaded: LoadedConfig): Readonly<Record<string, RuleMeta>> {
+  return Object.fromEntries([
     ...[...loaded.fileRules.entries()].map(([id, rule]) => [id, rule.meta] as const),
     ...[...loaded.projectRules.entries()].map(([id, rule]) => [id, rule.meta] as const)
-  ]) as Readonly<Record<string, RuleMeta>>;
-  process.stdout.write(formatResult(result, format, { cwd, quiet: rawOptions.quiet === true, ruleMetadata: metadata }));
-  process.exitCode = result.summary.errors > 0 || result.summary.warnings > Number(rawOptions.maxWarnings ?? Number.POSITIVE_INFINITY) ? 1 : 0;
+  ]);
+}
+
+function printEffectiveConfig(loaded: LoadedConfig, printConfig: string, cwd: string): void {
+  const effective = effectiveConfig(loaded, resolve(cwd, printConfig), cwd);
+  const output = {
+    filePath: printConfig.replaceAll("\\", "/"),
+    ignored: effective.ignored,
+    plugins: [...loaded.pluginNames.entries()].map(([namespace, packageName]) => ({ namespace, package: packageName })),
+    rules: Object.fromEntries([...effective.rules.entries()].sort(([left], [right]) => compareText(left, right)).map(([id, setting]) => [id, [setting.severity, setting.options ?? {}]]))
+  };
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
 function printRuleList(
-  loaded: Awaited<ReturnType<typeof loadConfig>>,
+  loaded: LoadedConfig,
   format: FormatterName,
   cwd: string
 ): void {
@@ -157,7 +180,7 @@ function printRuleList(
     .map(([id, rule]) => ({
       id,
       ...rule.meta,
-      severity: effective.rules.get(id)?.severity ?? (rule.meta.recommended ? "error" : "off")
+      severity: effectiveSeverity(rule.meta, effective.rules.get(id))
     }));
   if (format === "json") {
     process.stdout.write(`${JSON.stringify({ schemaVersion: 1, rules }, null, 2)}\n`);
@@ -166,11 +189,10 @@ function printRuleList(
   } else {
     for (const rule of rules) process.stdout.write(`${rule.id}\t${rule.severity}\t${rule.description}\n`);
   }
-  void cwd;
 }
 
 function printRuleExplanation(
-  loaded: Awaited<ReturnType<typeof loadConfig>>,
+  loaded: LoadedConfig,
   ruleId: string,
   format: FormatterName,
   cwd: string
@@ -183,11 +205,15 @@ function printRuleExplanation(
     id: ruleId,
     ...rule.meta,
     examples: rule.meta.examples ?? [],
-    severity: setting?.severity ?? (rule.meta.recommended ? "error" : "off"),
+    severity: effectiveSeverity(rule.meta, setting),
     options: setting?.options ?? rule.meta.defaultOptions ?? {}
   };
   if (format === "json") process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
   else process.stdout.write(`${ruleId}\n${rule.meta.description}\nseverity: ${output.severity}\noptions: ${JSON.stringify(output.options)}\nrecommended: ${rule.meta.recommended}\nfixable: ${rule.meta.fixable === true}\nexamples: ${JSON.stringify(output.examples)}\n${rule.meta.documentation ?? ""}\n`);
+}
+
+function effectiveSeverity(meta: RuleMeta, setting: { readonly severity: Severity } | undefined): Severity {
+  return setting?.severity ?? (meta.recommended ? "error" : "off");
 }
 
 function parseNonNegativeInteger(value: string): number {

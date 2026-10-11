@@ -56,54 +56,71 @@ function parseDirectives(document: LintDocument): Directive[] {
   return directives.sort((left, right) => left.line - right.line);
 }
 
+interface BlockState {
+  readonly disableAll: Set<Directive>;
+  readonly disabledRules: Map<string, Set<Directive>>;
+  readonly enabledRules: Set<string>;
+}
+
 function isSuppressed(directives: readonly Directive[], diagnostic: Diagnostic): boolean {
   let oneShot = false;
-  const disableAll = new Set<Directive>();
-  const disabledRules = new Map<string, Set<Directive>>();
-  const enabledRules = new Set<string>();
+  const state: BlockState = { disableAll: new Set(), disabledRules: new Map(), enabledRules: new Set() };
   for (const directive of directives) {
-    if (directive.kind === "disable-next-line" && diagnostic.start.line === directive.line + 1 && matchesRules(directive, diagnostic.ruleId)) {
-      directive.used = true;
-      oneShot = true;
-    } else if (directive.kind === "disable-line" && diagnostic.start.line === directive.line && matchesRules(directive, diagnostic.ruleId)) {
+    // A disable-line directive sits on the diagnostic's own line, so it is matched before the break.
+    if (matchesOneShot(directive, diagnostic)) {
       directive.used = true;
       oneShot = true;
     }
     if (directive.line >= diagnostic.start.line) break;
-    if (directive.kind === "disable-file" || directive.kind === "disable") {
-      if (!directive.rules) {
-        disableAll.add(directive);
-        enabledRules.clear();
-      } else {
-        for (const rule of directive.rules) {
-          const active = disabledRules.get(rule) ?? new Set<Directive>();
-          active.add(directive);
-          disabledRules.set(rule, active);
-        }
-      }
-    } else if (directive.kind === "enable") {
-      if (!directive.rules) {
-        disableAll.clear();
-        disabledRules.clear();
-        enabledRules.clear();
-      } else {
-        for (const rule of directive.rules) {
-          disabledRules.delete(rule);
-          enabledRules.add(rule);
-        }
-      }
-    }
+    applyBlockDirective(state, directive);
   }
-  const activeRuleDirectives = disabledRules.get(diagnostic.ruleId);
-  const suppressedByBlanket = disableAll.size > 0 && !enabledRules.has(diagnostic.ruleId);
-  const suppressed = oneShot || suppressedByBlanket || Boolean(activeRuleDirectives?.size);
-  if (suppressed) {
-    if (suppressedByBlanket) {
-      for (const directive of disableAll) directive.used = true;
-    }
-    for (const directive of activeRuleDirectives ?? []) directive.used = true;
+  const activeRuleDirectives = state.disabledRules.get(diagnostic.ruleId) ?? new Set<Directive>();
+  const suppressedByBlanket = state.disableAll.size > 0 && !state.enabledRules.has(diagnostic.ruleId);
+  if (suppressedByBlanket) markUsed(state.disableAll);
+  markUsed(activeRuleDirectives);
+  return oneShot || suppressedByBlanket || activeRuleDirectives.size > 0;
+}
+
+const ONE_SHOT_LINE_OFFSET: Partial<Record<Directive["kind"], number>> = { "disable-next-line": 1, "disable-line": 0 };
+
+function matchesOneShot(directive: Directive, diagnostic: Diagnostic): boolean {
+  const lineOffset = ONE_SHOT_LINE_OFFSET[directive.kind];
+  return lineOffset !== undefined && diagnostic.start.line === directive.line + lineOffset && matchesRules(directive, diagnostic.ruleId);
+}
+
+function applyBlockDirective(state: BlockState, directive: Directive): void {
+  if (directive.kind === "disable-file" || directive.kind === "disable") applyDisable(state, directive);
+  else if (directive.kind === "enable") applyEnable(state, directive);
+}
+
+function applyDisable(state: BlockState, directive: Directive): void {
+  if (!directive.rules) {
+    state.disableAll.add(directive);
+    state.enabledRules.clear();
+    return;
   }
-  return suppressed;
+  for (const rule of directive.rules) {
+    const active = state.disabledRules.get(rule) ?? new Set<Directive>();
+    active.add(directive);
+    state.disabledRules.set(rule, active);
+  }
+}
+
+function applyEnable(state: BlockState, directive: Directive): void {
+  if (!directive.rules) {
+    state.disableAll.clear();
+    state.disabledRules.clear();
+    state.enabledRules.clear();
+    return;
+  }
+  for (const rule of directive.rules) {
+    state.disabledRules.delete(rule);
+    state.enabledRules.add(rule);
+  }
+}
+
+function markUsed(directives: Iterable<Directive>): void {
+  for (const directive of directives) directive.used = true;
 }
 
 function matchesRules(directive: Directive, ruleId: string): boolean {
