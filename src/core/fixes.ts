@@ -5,28 +5,12 @@ import { compareText } from "./ordering.js";
 export function selectFixes(diagnostics: readonly Diagnostic[], filePath: string): { fixes: RuleFix[]; conflicts: Diagnostic[] } {
   const candidates = diagnostics.flatMap((diagnostic) => diagnostic.fix ? [{ diagnostic, fix: diagnostic.fix }] : []);
   candidates.sort((left, right) => left.fix.range[0] - right.fix.range[0] || left.fix.range[1] - right.fix.range[1] || compareText(left.diagnostic.ruleId, right.diagnostic.ruleId));
-  const conflicting = new Set<number>();
-  for (let left = 0; left < candidates.length; left += 1) {
-    const first = candidates[left];
-    if (!first) continue;
-    for (let right = left + 1; right < candidates.length; right += 1) {
-      const second = candidates[right];
-      if (!second) continue;
-      if (!fixesOverlap(first.fix, second.fix)) continue;
-      conflicting.add(left);
-      conflicting.add(right);
-    }
-  }
+  const conflicting = overlappingIndexes(candidates.map((candidate) => candidate.fix));
   const fixes: RuleFix[] = [];
   const conflicts: Diagnostic[] = [];
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    if (!candidate) continue;
-    if (!conflicting.has(index)) {
-      fixes.push(candidate.fix);
-      continue;
-    }
-    conflicts.push({
+  candidates.forEach((candidate, index) => {
+    if (!conflicting.has(index)) fixes.push(candidate.fix);
+    else conflicts.push({
       filePath,
       ruleId: "fix-conflict",
       severity: "error",
@@ -34,7 +18,7 @@ export function selectFixes(diagnostics: readonly Diagnostic[], filePath: string
       start: candidate.diagnostic.start,
       data: { conflictingRule: candidate.diagnostic.ruleId }
     });
-  }
+  });
   return { fixes, conflicts: dedupeDiagnostics(conflicts) };
 }
 
@@ -47,6 +31,20 @@ export function applyFixes(source: string, fixes: readonly RuleFix[]): string {
     output = output.slice(0, fix.range[0]) + fix.text + output.slice(fix.range[1]);
   }
   return output;
+}
+
+function overlappingIndexes(fixes: readonly RuleFix[]): Set<number> {
+  const overlapping = new Set<number>();
+  for (let left = 0; left < fixes.length; left += 1) {
+    for (let right = left + 1; right < fixes.length; right += 1) {
+      const first = fixes[left];
+      const second = fixes[right];
+      if (!first || !second || !fixesOverlap(first, second)) continue;
+      overlapping.add(left);
+      overlapping.add(right);
+    }
+  }
+  return overlapping;
 }
 
 function fixesOverlap(left: RuleFix, right: RuleFix): boolean {

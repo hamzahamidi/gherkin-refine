@@ -235,7 +235,7 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-void runCli();
+await runCli();
 
 function parseList(value: string): readonly string[] {
   return value.split(",").map((item) => item.trim()).filter((item) => item !== "");

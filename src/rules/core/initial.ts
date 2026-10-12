@@ -1,4 +1,5 @@
-import type { RuleModule } from "../../types.js";
+import type { Location, Scenario } from "@cucumber/messages";
+import type { LintDocument, RuleContext, RuleModule } from "../../types.js";
 import { forEachScenario } from "../../parser/document.js";
 import { defineRule } from "../define.js";
 import { DOCS_URL, lineDiagnostic, rangeDiagnostic, ruleDocs } from "../helpers.js";
@@ -76,28 +77,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
       forEachScenario(document, (scenario) => {
         if (!scenario.examples.length) return;
         const declared = scenario.examples.map((examples) => new Set((examples.tableHeader?.cells ?? []).map((cell) => cell.value)));
-        const sources = [
-          { location: scenario.location, values: [scenario.name] },
-          ...scenario.steps.map((step) => ({ location: step.location, values: [
-            step.text,
-            ...(step.docString ? [step.docString.content] : []),
-            ...(step.dataTable?.rows.flatMap((row) => row.cells.map((cell) => cell.value)) ?? [])
-          ] }))
-        ];
-        for (const { location, values } of sources) {
-          let cursor = document.offsetAt({ line: location.line, column: location.column ?? 1 });
-          for (const value of values) {
-            for (const match of value.matchAll(/<([^<>]+)>/g)) {
-              const name = match[1] ?? "";
-              if (declared.length > 0 && declared.every((headers) => headers.has(name))) continue;
-              let offset = document.source.indexOf(match[0], cursor);
-              if (offset < 0) offset = cursor;
-              const position = document.positionAt(offset);
-              report(rangeDiagnostic(document, position.line, position.column, Math.max(name.length + 2, 1), "no-undefined-outline-variables", `Placeholder <${name}> has no matching Examples column.`));
-              cursor = offset + match[0].length;
-            }
-          }
-        }
+        for (const source of placeholderSources(scenario)) reportUndeclaredPlaceholders(document, source, declared, report);
       });
     }
   },
@@ -175,3 +155,39 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
     }
   }),
 };
+
+interface PlaceholderSource {
+  readonly location: Location;
+  readonly values: readonly string[];
+}
+
+function placeholderSources(scenario: Scenario): PlaceholderSource[] {
+  return [
+    { location: scenario.location, values: [scenario.name] },
+    ...scenario.steps.map((step) => ({ location: step.location, values: [
+      step.text,
+      ...(step.docString ? [step.docString.content] : []),
+      ...(step.dataTable?.rows.flatMap((row) => row.cells.map((cell) => cell.value)) ?? [])
+    ] }))
+  ];
+}
+
+function reportUndeclaredPlaceholders(
+  document: LintDocument,
+  { location, values }: PlaceholderSource,
+  declared: readonly ReadonlySet<string>[],
+  report: RuleContext["report"]
+): void {
+  let cursor = document.offsetAt({ line: location.line, column: location.column ?? 1 });
+  for (const value of values) {
+    for (const match of value.matchAll(/<([^<>]+)>/g)) {
+      const name = match[1] ?? "";
+      if (declared.length > 0 && declared.every((headers) => headers.has(name))) continue;
+      let offset = document.source.indexOf(match[0], cursor);
+      if (offset < 0) offset = cursor;
+      const position = document.positionAt(offset);
+      report(rangeDiagnostic(document, position.line, position.column, Math.max(name.length + 2, 1), "no-undefined-outline-variables", `Placeholder <${name}> has no matching Examples column.`));
+      cursor = offset + match[0].length;
+    }
+  }
+}

@@ -146,7 +146,6 @@ function mergePresets(input: LintConfig, presets: ReadonlyMap<string, LintConfig
     merged = mergeConfigs(merged, preset);
   }
   const { extends: ignoredExtends, ...localConfig } = input;
-  void ignoredExtends;
   return mergeConfigs(merged, localConfig);
 }
 
