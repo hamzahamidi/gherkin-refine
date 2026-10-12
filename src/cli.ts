@@ -177,6 +177,7 @@ function printRuleList(
 ): void {
   const effective = effectiveConfig(loaded, "__rules__.feature", cwd);
   const rules = [...loaded.fileRules.entries(), ...loaded.projectRules.entries()]
+    .filter(([id]) => !loaded.legacyRuleIds.has(id))
     .sort(([left], [right]) => compareText(left, right))
     .map(([id, rule]) => ({
       id,

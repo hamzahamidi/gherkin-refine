@@ -1,6 +1,6 @@
-import { createRequire } from "node:module";
+import { createRequire, isBuiltin } from "node:module";
 import { readFile } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { PluginModule } from "../types.js";
 import { ConfigError, isRecord, messageOf } from "./errors.js";
@@ -10,11 +10,14 @@ export async function loadPlugins(cwd: string, specifiers: readonly string[]) {
   const loaded = [];
   for (const specifier of new Set(specifiers)) {
     try {
+      if (isBuiltin(specifier)) throw new ConfigError(`${specifier} is a Node.js built-in module, not a plugin package or file.`);
       const resolved = await resolvePluginPath(cwd, specifier, require);
       const imported = await import(pathToFileURL(resolved).href);
       const module = (imported.default ?? imported) as PluginModule;
-      const namespace = namespaceFromPackageName(readPackageName(resolved) ?? specifier);
-      loaded.push({ specifier, namespace, module });
+      const packageName = readPackageName(resolved);
+      const namespace = namespaceFromPackageName(packageName ?? fileStem(specifier));
+      const legacyNamespace = packageName === undefined ? namespaceFromPackageName(specifier) : namespace;
+      loaded.push({ specifier, namespace, ...(legacyNamespace === namespace ? {} : { legacyNamespace }), module });
     } catch (error) {
       throw new ConfigError(`Could not load plugin ${JSON.stringify(specifier)}: ${messageOf(error)}`, { cause: error });
     }
@@ -73,34 +76,85 @@ function* ancestorDirectories(start: string): Generator<string> {
 }
 
 async function packageEntry(packageDirectory: string, specifier: string, subpath: string): Promise<string | undefined> {
-  try {
-    const manifest = JSON.parse(await readFile(resolve(packageDirectory, "package.json"), "utf8")) as PackageManifest;
-    const entry = subpath ? `./${subpath}` : exportTarget(manifest.exports, ".") ?? manifest.module ?? manifest.main ?? "index.js";
-    const target = resolve(packageDirectory, entry);
-    const relativeTarget = relative(packageDirectory, target);
-    if (relativeTarget.startsWith("..") || isAbsolute(relativeTarget)) throw new ConfigError(`Plugin ${specifier} resolves outside its package directory.`);
-    return target;
-  } catch (error) {
-    if (error instanceof ConfigError) throw error;
-    return undefined;
-  }
+  const manifest = await readManifest(resolve(packageDirectory, "package.json"));
+  if (!manifest) return undefined;
+  const target = resolve(packageDirectory, packageEntryPath(manifest, specifier, subpath));
+  const relativeTarget = relative(packageDirectory, target);
+  if (relativeTarget.startsWith("..") || isAbsolute(relativeTarget)) throw new ConfigError(`Plugin ${specifier} resolves outside its package directory.`);
+  return target;
 }
 
-function exportTarget(exports: unknown, key: string): string | undefined {
-  if (typeof exports === "string") return key === "." ? exports : undefined;
-  if (Array.isArray(exports)) {
-    for (const item of exports) {
-      const target = exportTarget(item, key);
-      if (target) return target;
+async function readManifest(path: string): Promise<PackageManifest | undefined> {
+  let text: string;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (error) {
+    if (isMissing(error)) return undefined;
+    throw new ConfigError(`Could not read ${path}: ${messageOf(error)}`, { cause: error });
+  }
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(text);
+  } catch (error) {
+    throw new ConfigError(`${path} is not valid JSON: ${messageOf(error)}`, { cause: error });
+  }
+  if (!isRecord(manifest)) throw new ConfigError(`${path} must contain a JSON object.`);
+  return manifest as PackageManifest;
+}
+
+function isMissing(error: unknown): boolean {
+  return isRecord(error) && (error.code === "ENOENT" || error.code === "ENOTDIR");
+}
+
+function packageEntryPath(manifest: PackageManifest, specifier: string, subpath: string): string {
+  const fallback = manifest.module ?? manifest.main ?? "index.js";
+  if (manifest.exports === undefined || manifest.exports === null) return subpath ? `./${subpath}` : fallback;
+  const target = conditionTarget(exportEntry(manifest.exports, subpath ? `./${subpath}` : "."));
+  if (target !== undefined) return target;
+  if (subpath) throw new ConfigError(`Plugin ${specifier} is not exported by its package.`);
+  return fallback;
+}
+
+function exportEntry(exports: unknown, request: string): unknown {
+  if (!isRecord(exports) || !Object.keys(exports).some((key) => key.startsWith("."))) return request === "." ? exports : undefined;
+  if (Object.hasOwn(exports, request)) return exports[request];
+  let best: { readonly key: string; readonly match: string } | undefined;
+  for (const key of Object.keys(exports)) {
+    const match = patternMatch(key, request);
+    if (match !== undefined && (!best || key.indexOf("*") > best.key.indexOf("*"))) best = { key, match };
+  }
+  return best ? substitute(exports[best.key], best.match) : undefined;
+}
+
+function patternMatch(pattern: string, request: string): string | undefined {
+  const star = pattern.indexOf("*");
+  if (star < 0 || pattern.includes("*", star + 1)) return undefined;
+  const prefix = pattern.slice(0, star);
+  const suffix = pattern.slice(star + 1);
+  if (request.length < prefix.length + suffix.length || !request.startsWith(prefix) || !request.endsWith(suffix)) return undefined;
+  return request.slice(prefix.length, request.length - suffix.length);
+}
+
+function substitute(target: unknown, match: string): unknown {
+  if (typeof target === "string") return target.replaceAll("*", match);
+  if (Array.isArray(target)) return target.map((item) => substitute(item, match));
+  if (isRecord(target)) return Object.fromEntries(Object.entries(target).map(([condition, value]) => [condition, substitute(value, match)]));
+  return target;
+}
+
+function conditionTarget(target: unknown): string | undefined {
+  if (typeof target === "string") return target;
+  if (Array.isArray(target)) {
+    for (const item of target) {
+      const resolved = conditionTarget(item);
+      if (resolved) return resolved;
     }
     return undefined;
   }
-  if (!isRecord(exports)) return undefined;
-  const subpathExports = Object.keys(exports).some((name) => name.startsWith("."));
-  if (subpathExports) return exportTarget(exports[key], key);
+  if (!isRecord(target)) return undefined;
   for (const condition of ["node", "import", "default", "require"]) {
-    const target = exportTarget(exports[condition], key);
-    if (target) return target;
+    const resolved = conditionTarget(target[condition]);
+    if (resolved) return resolved;
   }
   return undefined;
 }
@@ -119,6 +173,11 @@ function readPackageName(resolvedFile: string): string | undefined {
       directory = parent;
     }
   }
+}
+
+function fileStem(specifier: string): string {
+  const last = specifier.split(/[\\/]/).at(-1) ?? specifier;
+  return last.slice(0, last.length - extname(last).length) || last;
 }
 
 function namespaceFromPackageName(name: string): string {

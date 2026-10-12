@@ -42,7 +42,9 @@ Rule calls may return a Promise. The engine awaits every call. A rejected rule f
 
 ## Rule IDs
 
-A rule ID is the plugin namespace, a slash, and the rule key. The namespace is the last segment of the plugin's package name without a `gherkin-refine-plugin-`, `gherkinlint-plugin-` or `eslint-plugin-` prefix, so `gherkin-refine-plugin-company` and `@acme/gherkin-refine-plugin-company` both give `company/company-tag-policy`. A plugin loaded from a path with no `package.json` above it takes its file name as namespace, extension included.
+A rule ID is the plugin namespace, a slash, and the rule key. The namespace is the last segment of the plugin's package name without a `gherkin-refine-plugin-`, `gherkinlint-plugin-` or `eslint-plugin-` prefix, so `gherkin-refine-plugin-company` and `@acme/gherkin-refine-plugin-company` both give `company/company-tag-policy`. A plugin loaded from a path with no `package.json` above it takes its file name without the extension as namespace, so `./plugin/max-tags.ts` gives `max-tags/max-scenario-tags`. The earlier ID with the extension, `max-tags.ts/max-scenario-tags`, still works in configuration and suppression comments.
+
+A specifier with a subpath, such as `pkg/rules`, must be listed in the package's `exports` when the package declares one, including `*` patterns. A `package.json` that exists but cannot be read or parsed stops linting instead of falling back to a package in a parent directory. Node.js built-in modules such as `node:fs` are rejected as plugins.
 
 ## Rule options
 

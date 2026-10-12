@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { loadConfigObject } from "../src/config/index.js";
 import { loadPlugins } from "../src/config/plugins.js";
+import { lintText } from "../src/index.js";
 
 let root: string;
 let project: string;
@@ -36,6 +38,11 @@ beforeAll(async () => {
   await pkg(project, "escape", { exports: { ".": { import: "../../../outside.js" } } }, {});
   await pkg(project, "escape-subpath", { exports: { ".": { import: "./ok.js" } } }, { "ok.js": null });
   await pkg(project, "exports-null", { exports: null, main: "n.js" }, { "n.js": null });
+  await pkg(project, "no-exports", { main: "index.js" }, { "index.js": null, "sub/s.js": null });
+  await pkg(project, "wildcard", { exports: { ".": { import: "./main.js" }, "./rules/*": { import: "./lib/*.js" }, "./rules/private/*": null } }, { "main.js": null, "lib/a.js": null, "lib/private/b.js": null });
+  await pkg(project, "malformed", "{ not json", { "index.js": null });
+  await pkg(root, "malformed", { exports: { import: "./parent.js" } }, { "parent.js": null });
+  await pkg(project, "null-manifest", "null", { "index.js": null });
   await pkg(project, "exports-no-match", { exports: { browser: "./b.js" } }, { "b.js": null, "index.js": null });
   await pkg(project, "eslint-plugin-gherkin", { exports: { import: "./e.js" } }, { "e.js": null });
   await pkg(project, "gherkinlint-plugin-old", { main: "o.js" }, { "o.js": null });
@@ -66,6 +73,9 @@ describe("plugin resolution", () => {
     ["exports-string-import", "exports-string-import", "s.js"],
     ["exports-array", "exports-array", "b.js"],
     ["exports-subpaths", "exports-subpaths", "main.js"],
+    ["exports-subpaths/rules", "exports-subpaths", "rules.js"],
+    ["wildcard/rules/a", "wildcard", "lib/a.js"],
+    ["no-exports/sub/s.js", "no-exports", "sub/s.js"],
     ["module-field", "module-field", "m.js"],
     ["module-field/x", "module-field", "x.js"],
     ["exports-null", "exports-null", "n.js"],
@@ -82,13 +92,11 @@ describe("plugin resolution", () => {
 
   it("loads local plugins by relative path, absolute path and file URL", async () => {
     const absolute = join(project, "local-plugin.mjs");
-    const loaded = await resolveFrom(project, ["./local-plugin.mjs", absolute, pathToFileURL(absolute).href]);
-    expect(loaded.map(([specifier, , rules]) => [specifier, rules])).toEqual([
-      ["./local-plugin.mjs", ["local"]],
-      [absolute, ["local"]],
-      [pathToFileURL(absolute).href, ["local"]]
+    expect(await resolveFrom(project, ["./local-plugin.mjs", absolute, pathToFileURL(absolute).href])).toEqual([
+      ["./local-plugin.mjs", "local-plugin", ["local"]],
+      [absolute, "local-plugin", ["local"]],
+      [pathToFileURL(absolute).href, "local-plugin", ["local"]]
     ]);
-    expect([loaded[0]?.[1], loaded[2]?.[1]]).toEqual(["local-plugin.mjs", "local-plugin.mjs"]);
   });
 
   it("loads each specifier once", async () => {
@@ -97,7 +105,13 @@ describe("plugin resolution", () => {
 
   it.each([
     ["escape", "resolves outside its package directory"],
-    ["escape-subpath/../../outside.js", "resolves outside its package directory"],
+    ["escape-subpath/../../outside.js", "is not exported by its package"],
+    ["escape-subpath/ok.js", "is not exported by its package"],
+    ["wildcard/rules/private/b", "is not exported by its package"],
+    ["malformed", "package.json is not valid JSON"],
+    ["null-manifest", "package.json must contain a JSON object"],
+    ["node:fs", "node:fs is a Node.js built-in module"],
+    ["fs", "fs is a Node.js built-in module"],
     ["throws-on-import", "boom"],
     ["@scope", "Package resolution did not find @scope"],
     ["missing-package", "Package resolution did not find missing-package"],
@@ -109,3 +123,19 @@ describe("plugin resolution", () => {
     await expect(resolveFrom(project, [specifier])).rejects.toThrow(message);
   });
 });
+
+describe("path plugin namespaces", () => {
+  const reporting = (rule: string) => `export default { rules: { ${JSON.stringify(rule)}: { meta: { description: "x", category: "correctness", recommended: false }, run({ report }) { report({ message: "found", start: { line: 1, column: 1 } }); } } } };\n`;
+
+  it("drops the extension and keeps the previous ID working", async () => {
+    await writeFile(join(project, "reporting-plugin.mjs"), reporting("check"));
+    const loaded = await loadConfigObject(project, { extends: [], plugins: ["./reporting-plugin.mjs"] });
+    expect([...loaded.fileRules.keys()].filter((id) => id.includes("reporting-plugin"))).toEqual(["reporting-plugin/check", "reporting-plugin.mjs/check"]);
+    expect([...loaded.legacyRuleIds]).toEqual(["reporting-plugin.mjs/check"]);
+    for (const id of ["reporting-plugin/check", "reporting-plugin.mjs/check"]) {
+      const result = await lintText("Feature: x\n", { cwd: project, filePath: "x.feature", config: { extends: [], plugins: ["./reporting-plugin.mjs"], rules: { [id]: "error" } } });
+      expect(result.results[0]?.diagnostics.map((item) => item.ruleId)).toEqual([id]);
+    }
+  });
+});
+
