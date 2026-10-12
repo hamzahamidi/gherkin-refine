@@ -146,8 +146,8 @@ npm run validate
 
 `validate` runs type checking, linting, the build, documentation checks, tests, and package verification. See [CONTRIBUTING.md](CONTRIBUTING.md), open an [issue](https://github.com/hamzahamidi/gherkin-refine/issues), or start a [discussion](https://github.com/hamzahamidi/gherkin-refine/discussions).
 
-## License and security
+## License, support and security
 
-Gherkin Refine is [MIT licensed](LICENSE) and independently maintained; it is not affiliated with Cucumber or `gherkin-lint`. It has no telemetry, and core rules make no network requests. Report vulnerabilities privately via the [security policy](SECURITY.md).
+Gherkin Refine is [MIT licensed](LICENSE) and independently maintained; it is not affiliated with Cucumber or `gherkin-lint`. It has no telemetry, and core rules make no network requests. Report vulnerabilities privately via the [security policy](SECURITY.md). The [support policy](SUPPORT.md) covers versions, Node.js support and how to leave the project.
 
 Background reading: [original tutorial](https://hamidihamza.com/notes/add-gherkin-linting-nodejs/) | [DEV.to](https://dev.to/hamzahamidi/add-gherkin-linting-to-a-nodejs-project-3m8b) | [Medium](https://medium.com/@hamidihamza/add-gherkin-linting-to-a-node-js-project-0cc2bea2e2c0).
