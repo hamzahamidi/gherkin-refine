@@ -1,6 +1,6 @@
 # Gherkin Refine and gherkin-lint
 
-This page compares [gherkin-lint](https://github.com/gherkin-lint/gherkin-lint) 4.2.4 with Gherkin Refine 1.4.0. The [migration guide](migration.md) maps each gherkin-lint rule and CLI flag.
+This page compares [gherkin-lint](https://github.com/gherkin-lint/gherkin-lint) 4.2.4 with Gherkin Refine 1.4.1. The [migration guide](migration.md) maps each gherkin-lint rule and CLI flag.
 
 ## Compatibility summary
 
@@ -20,7 +20,7 @@ gherkin-lint has years of production use. Gherkin Refine is newer and independen
 
 ## Feature comparison
 
-| | gherkin-lint 4.2.4 | Gherkin Refine 1.4.0 |
+| | gherkin-lint 4.2.4 | Gherkin Refine 1.4.1 |
 | --- | --- | --- |
 | Published | December 20, 2023 | October 12, 2026 |
 | Node.js | 10 or later | 22.18 or later |

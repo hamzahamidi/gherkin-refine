@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1 (2026-10-12)
+
+Adds a support policy that defines the public interface covered by Semantic Versioning, the supported Node.js versions, what happens if maintenance stops and how to return to gherkin-lint. The README links to it. Lint results, configuration handling and the public API are unchanged.
+
 ## 1.4.0 (2026-10-12)
 
 Invalid rule options now say what is wrong, such as `maxSteps must be a positive integer`. Rules, including plugin rules, can explain invalid options through an optional `optionsError(options)`. An override that only turns a rule off no longer validates options it does not have.
