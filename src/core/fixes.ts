@@ -8,14 +8,9 @@ export function selectFixes(diagnostics: readonly Diagnostic[], filePath: string
   const conflicting = overlappingIndexes(candidates.map((candidate) => candidate.fix));
   const fixes: RuleFix[] = [];
   const conflicts: Diagnostic[] = [];
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    if (!candidate) continue;
-    if (!conflicting.has(index)) {
-      fixes.push(candidate.fix);
-      continue;
-    }
-    conflicts.push({
+  candidates.forEach((candidate, index) => {
+    if (!conflicting.has(index)) fixes.push(candidate.fix);
+    else conflicts.push({
       filePath,
       ruleId: "fix-conflict",
       severity: "error",
@@ -23,7 +18,7 @@ export function selectFixes(diagnostics: readonly Diagnostic[], filePath: string
       start: candidate.diagnostic.start,
       data: { conflictingRule: candidate.diagnostic.ruleId }
     });
-  }
+  });
   return { fixes, conflicts: dedupeDiagnostics(conflicts) };
 }
 
