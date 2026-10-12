@@ -44,7 +44,8 @@
     "docs:rules": "npm run build && node scripts/generate-rule-docs.mjs",
     "docs:dev": "npm run docs:rules && node scripts/generate-llms.mjs && vitepress dev docs",
     "docs:build": "npm run docs:rules && node scripts/generate-llms.mjs && vitepress build docs",
-    "docs:check": "node scripts/generate-rule-docs.mjs --check"
+    "docs:check": "node scripts/generate-rule-docs.mjs --check",
+    "differential": "node scripts/differential.mjs"
   },
   "keywords": [
     "gherkin",

@@ -21,6 +21,21 @@ npm run docs:rules
 
 Preview the documentation site with `npm run docs:dev`.
 
+## Refactors and performance
+
+A change meant to keep behavior can be compared with `main`:
+
+```sh
+git worktree add ../gherkin-refine-main main
+cd ../gherkin-refine-main && npm ci && npm run build && cd -
+npm run build
+npm run differential -- ../gherkin-refine-main/dist dist
+```
+
+`differential` lints seeded random feature files, multi-file trees with symlinks, a probe plugin that records traversal order, and legacy configurations with both builds, and prints every difference. Version strings are ignored. An optional count and seed follow the two directories.
+
+`npm run bench` times 1 to 1,000 files, and one file with up to 2,000 diagnostics, 200 suppression directives and 1,800 fixes.
+
 ## Pull requests
 
 Use a [Conventional Commits](https://www.conventionalcommits.org/) title such as `fix: ...` or `feat: ...`. Describe what changes and how it was verified. Add a `CHANGELOG.md` entry for any change users can see.
