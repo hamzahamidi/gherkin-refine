@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.5 (2026-10-12)
+
+Simplifies internals with no change in lint results, fixes, configuration handling or the public API. Built-in rules take their option types from their validators, and the functions SonarQube Cloud flagged as complex or unclear are split into named steps.
+
 ## 1.3.4 (2026-10-12)
 
 Rejects keys inherited from `Object.prototype`, such as `__proto__` and `toString`, as `file-name` styles. They now fail configuration validation like any other unknown style instead of crashing the rule or reporting a name like `[object Object].feature`. The package ships the rewritten README and the plugin guide's typed rule options and project rule sections.
