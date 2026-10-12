@@ -5,7 +5,7 @@ import { forEachScenario } from "../../parser/document.js";
 import { FILE_NAME_STYLES, isFileNameStyle, type FileNameStyle } from "./case-style.js";
 import { isValidPattern, keywordKey, nodeType, RESTRICTED_PATTERN_KEYS } from "./helpers.js";
 import { isRecord, isStringArray, lineDiagnostic, ruleDocs } from "../helpers.js";
-import { defineRule } from "../define.js";
+import { checkedOptions, defineRule, OPTIONS_OBJECT_REQUIRED } from "../define.js";
 
 export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
   "required-tags": defineRule({
@@ -17,10 +17,16 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Scenario without a @jira-123 tag"],
       documentation: ruleDocs("required-tags")
     },
-    validateOptions: (value: unknown): value is { tags?: string[]; ignoreUntagged?: boolean } =>
-      isRecord(value) && Object.keys(value).every((key) => key === "tags" || key === "ignoreUntagged")
-      && (value.ignoreUntagged === undefined || typeof value.ignoreUntagged === "boolean")
-      && (value.tags === undefined || (isStringArray(value.tags) && value.tags.every(isValidPattern))),
+    ...checkedOptions<{ tags?: string[]; ignoreUntagged?: boolean }>((value) => {
+      if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+      const unknown = Object.keys(value).find((key) => key !== "tags" && key !== "ignoreUntagged");
+      if (unknown !== undefined) return `unknown option ${unknown}`;
+      if (value.ignoreUntagged !== undefined && typeof value.ignoreUntagged !== "boolean") return "ignoreUntagged must be a boolean";
+      if (value.tags === undefined) return undefined;
+      if (!isStringArray(value.tags)) return "tags must be an array of strings";
+      const invalid = value.tags.find((pattern) => !isValidPattern(pattern));
+      return invalid === undefined ? undefined : `tags entry ${JSON.stringify(invalid)} is not a valid regular expression`;
+    }),
     run({ document, options, report }) {
       const { tags = [], ignoreUntagged = true } = options;
       const required = tags.map((pattern) => [pattern, new RegExp(pattern)] as const);
@@ -43,8 +49,16 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Scenario: TODO write this"],
       documentation: ruleDocs("no-restricted-patterns")
     },
-    validateOptions: (value: unknown): value is Readonly<Record<string, string[]>> =>
-      isRecord(value) && Object.entries(value).every(([key, patterns]) => RESTRICTED_PATTERN_KEYS.has(key) && isStringArray(patterns) && patterns.every(isValidPattern)),
+    ...checkedOptions<Readonly<Record<string, string[]>>>((value) => {
+      if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+      for (const [key, patterns] of Object.entries(value)) {
+        if (!RESTRICTED_PATTERN_KEYS.has(key)) return `unknown option ${key}`;
+        if (!isStringArray(patterns)) return `${key} must be an array of strings`;
+        const invalid = patterns.find((pattern) => !isValidPattern(pattern));
+        if (invalid !== undefined) return `${key} entry ${JSON.stringify(invalid)} is not a valid regular expression`;
+      }
+      return undefined;
+    }),
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
@@ -108,8 +122,12 @@ export const metadataRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["checkout_flow.feature with PascalCase"],
       documentation: ruleDocs("file-name")
     },
-    validateOptions: (value: unknown): value is { style?: FileNameStyle } =>
-      isRecord(value) && Object.keys(value).every((key) => key === "style") && (value.style === undefined || isFileNameStyle(value.style)),
+    ...checkedOptions<{ style?: FileNameStyle }>((value) => {
+      if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+      const unknown = Object.keys(value).find((key) => key !== "style");
+      if (unknown !== undefined) return `unknown option ${unknown}`;
+      return value.style === undefined || isFileNameStyle(value.style) ? undefined : `style must be one of ${Object.keys(FILE_NAME_STYLES).join(", ")}`;
+    }),
     run({ document, options, report }) {
       const style = options.style ?? "PascalCase";
       const name = basename(document.filePath.replaceAll("\\", "/"), ".feature");

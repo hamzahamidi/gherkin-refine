@@ -1,45 +1,62 @@
 import type { Scenario, Tag } from "@cucumber/messages";
 import type { LintDocument } from "../../types.js";
 import { forEachChild, forEachStep } from "../../parser/document.js";
-import type { ValidatedOptions } from "../define.js";
+import { checkedOptions, isPositiveInteger, OPTIONS_OBJECT_REQUIRED, regexError } from "../define.js";
 import { isRecord, isStringArray } from "../helpers.js";
 
 export const NAME_LENGTH_KEYS = ["Feature", "Rule", "Scenario", "Step"] as const;
-export const nameLengthOptions = (value: unknown): value is { max: number } | Partial<Record<(typeof NAME_LENGTH_KEYS)[number], number>> => {
-  if (!isRecord(value)) return false;
-  const isLimit = (limit: unknown) => Number.isInteger(limit) && Number(limit) > 0;
-  if ("max" in value) return Object.keys(value).length === 1 && isLimit(value.max);
-  return Object.entries(value).every(([key, limit]) => (NAME_LENGTH_KEYS as readonly string[]).includes(key) && isLimit(limit));
-};
-export const duplicateScenarioOptions = (value: unknown): value is { scope?: "feature" | "anywhere" } =>
-  isRecord(value) && Object.keys(value).every((key) => key === "scope") && (value.scope === undefined || value.scope === "feature" || value.scope === "anywhere");
-export const scenarioSizeOptions = (value: unknown): value is { maxSteps: number } =>
-  isRecord(value) && Number.isInteger(value.maxSteps) && Number(value.maxSteps) > 0;
-export const featureSizeOptions = (value: unknown): value is { maxScenarios: number; countOutlineExamples?: boolean } =>
-  isRecord(value) && Number.isInteger(value.maxScenarios) && Number(value.maxScenarios) > 0
-  && (value.countOutlineExamples === undefined || typeof value.countOutlineExamples === "boolean");
-export const tagPatternOptions = (value: unknown): value is { pattern: string } => {
-  if (!isRecord(value) || typeof value.pattern !== "string") return false;
-  try {
-    new RegExp(value.pattern);
-    return true;
-  } catch {
-    return false;
+export const nameLengthOptions = checkedOptions<{ max: number } | Partial<Record<(typeof NAME_LENGTH_KEYS)[number], number>>>((value) => {
+  if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+  if ("max" in value) {
+    if (Object.keys(value).length !== 1) return "max cannot be combined with Feature, Rule, Scenario or Step limits";
+    return isPositiveInteger(value.max) ? undefined : "max must be a positive integer";
   }
-};
-export const tagListOptions = (value: unknown): value is { tags?: string[]; patterns?: string[] } => {
-  if (!isRecord(value)) return false;
-  if (value.tags !== undefined && !isStringArray(value.tags)) return false;
-  if (value.patterns === undefined) return true;
-  if (!isStringArray(value.patterns)) return false;
-  try {
-    for (const pattern of value.patterns) new RegExp(pattern);
-    return true;
-  } catch {
-    return false;
+  for (const [key, limit] of Object.entries(value)) {
+    if (!(NAME_LENGTH_KEYS as readonly string[]).includes(key)) return `unknown option ${key}; use max, Feature, Rule, Scenario or Step`;
+    if (!isPositiveInteger(limit)) return `${key} must be a positive integer`;
   }
-};
-export function tagMatcher(options: ValidatedOptions<typeof tagListOptions>): (name: string) => boolean {
+  return undefined;
+});
+export interface DuplicateScenarioOptions {
+  readonly scope?: "feature" | "anywhere";
+}
+export const duplicateScenarioOptions = checkedOptions<DuplicateScenarioOptions>((value) => {
+  if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+  const unknown = Object.keys(value).find((key) => key !== "scope");
+  if (unknown !== undefined) return `unknown option ${unknown}`;
+  return value.scope === undefined || value.scope === "feature" || value.scope === "anywhere" ? undefined : 'scope must be "feature" or "anywhere"';
+});
+export const scenarioSizeOptions = checkedOptions<{ maxSteps: number }>((value) => {
+  if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+  return isPositiveInteger(value.maxSteps) ? undefined : "maxSteps must be a positive integer";
+});
+export const featureSizeOptions = checkedOptions<{ maxScenarios: number; countOutlineExamples?: boolean }>((value) => {
+  if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+  if (!isPositiveInteger(value.maxScenarios)) return "maxScenarios must be a positive integer";
+  if (value.countOutlineExamples !== undefined && typeof value.countOutlineExamples !== "boolean") return "countOutlineExamples must be a boolean";
+  return undefined;
+});
+export const tagPatternOptions = checkedOptions<{ pattern: string }>((value) => {
+  if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+  if (typeof value.pattern !== "string") return "pattern must be a string";
+  return regexError("pattern", value.pattern);
+});
+export interface TagListOptions {
+  readonly tags?: string[];
+  readonly patterns?: string[];
+}
+export const tagListOptions = checkedOptions<TagListOptions>((value) => {
+  if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+  if (value.tags !== undefined && !isStringArray(value.tags)) return "tags must be an array of strings";
+  if (value.patterns === undefined) return undefined;
+  if (!isStringArray(value.patterns)) return "patterns must be an array of strings";
+  for (const pattern of value.patterns) {
+    const error = regexError("patterns entry", pattern);
+    if (error) return error;
+  }
+  return undefined;
+});
+export function tagMatcher(options: TagListOptions): (name: string) => boolean {
   const { tags = [], patterns = [] } = options;
   const expressions = patterns.map((pattern) => new RegExp(pattern));
   return (name) => tags.includes(name) || expressions.some((expression) => expression.test(name));

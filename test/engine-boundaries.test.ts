@@ -24,6 +24,22 @@ async function fixture(module: string): Promise<{ cwd: string; config: LintConfi
 
 const meta = '{ description: "Boundary fixture", category: "correctness", recommended: false }';
 
+describe("rule option validation", () => {
+  it("skips options for a rule an override only turns off", async () => {
+    const { cwd, config } = await fixture(`export default { rules: { needs: { meta: ${meta}, validateOptions(options) { return typeof options.level === "number"; }, run() {} } } };`);
+    await writeFile(join(cwd, "a.feature"), "Feature: a\n");
+    const offOnly = await lintFiles(["."], { cwd, config: { ...config, rules: { "boundary/needs": ["error", { level: 1 }] }, overrides: [{ files: "a.feature", rules: { "boundary/needs": "off" } }] } });
+    expect(offOnly.summary.errors).toBe(0);
+    await expect(lintFiles(["."], { cwd, config: { ...config, overrides: [{ files: "a.feature", rules: { "boundary/needs": ["off", { level: "high" }] } }] } }))
+      .rejects.toThrow('Invalid options for rule "boundary/needs" in configuration override.');
+  });
+
+  it("adds the reason when a rule explains invalid options", async () => {
+    await expect(lintText("Feature: a\n", { config: { extends: [], rules: { "scenario-size": ["warn", { maxSteps: 0 }] } } }))
+      .rejects.toThrow(/Invalid options for rule "scenario-size" in .+: maxSteps must be a positive integer\./);
+  });
+});
+
 describe("project plugin execution", () => {
   it("uses per-file severity and filters reports for disabled or unknown files", async () => {
     const { cwd, config } = await fixture(`export const projectRules = { check: {

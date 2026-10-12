@@ -17,9 +17,11 @@ export function validateConfiguration(loaded: LoadedConfig, filePaths: readonly 
   for (const { id, setting, filePath } of entries) {
     const module = loaded.fileRules.get(id) ?? loaded.projectRules.get(id);
     if (!module) throw new ConfigError(`Unknown rule ${JSON.stringify(id)} in configuration.`);
+    if (setting.severity === "off" && setting.options === undefined) continue;
     const options = setting.options ?? module.meta.defaultOptions ?? {};
     if (module.validateOptions && !module.validateOptions(options)) {
-      throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}.`);
+      const reason = module.optionsError?.(options);
+      throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}${reason ? `: ${reason}` : ""}.`);
     }
   }
 }

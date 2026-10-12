@@ -2,7 +2,7 @@ import type { Background, Scenario, Step, Tag } from "@cucumber/messages";
 import type { RuleModule } from "../../types.js";
 import { INDENTATION_DEFAULTS, INDENTATION_KEYS, indentationFix, keywordKey, tagsByLine } from "./helpers.js";
 import { isRecord, lineDiagnostic, ruleDocs } from "../helpers.js";
-import { defineRule } from "../define.js";
+import { checkedOptions, defineRule, OPTIONS_OBJECT_REQUIRED } from "../define.js";
 
 export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
   indentation: defineRule({
@@ -15,8 +15,14 @@ export const indentationRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["   Scenario: shifted"],
       documentation: ruleDocs("indentation")
     },
-    validateOptions: (value: unknown): value is Record<string, number> =>
-      isRecord(value) && Object.entries(value).every(([key, level]) => INDENTATION_KEYS.has(key) && Number.isInteger(level) && Number(level) >= 0),
+    ...checkedOptions<Record<string, number>>((value) => {
+      if (!isRecord(value)) return OPTIONS_OBJECT_REQUIRED;
+      for (const [key, level] of Object.entries(value)) {
+        if (!INDENTATION_KEYS.has(key)) return `unknown option ${key}`;
+        if (!Number.isInteger(level) || Number(level) < 0) return `${key} must be a non-negative integer`;
+      }
+      return undefined;
+    }),
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;

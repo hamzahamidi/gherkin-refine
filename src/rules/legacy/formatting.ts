@@ -1,6 +1,6 @@
 import type { RuleModule } from "../../types.js";
 import { lineDiagnostic, ruleDocs, trailingRunStart } from "../helpers.js";
-import { defineRule } from "../define.js";
+import { checkedOptions, defineRule } from "../define.js";
 
 export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
   "new-line-at-eof": defineRule({
@@ -13,7 +13,7 @@ export const formattingRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Feature: no final line break"],
       documentation: ruleDocs("new-line-at-eof")
     },
-    validateOptions: (value: unknown): value is "yes" | "no" => value === "yes" || value === "no",
+    ...checkedOptions<"yes" | "no">((value) => value === "yes" || value === "no" ? undefined : 'options must be "yes" or "no"'),
     run({ document, options, report }) {
       const hasLineBreak = document.lines.at(-1) === "";
       const line = document.lines.length;

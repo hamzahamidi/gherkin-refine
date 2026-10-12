@@ -1,9 +1,8 @@
 import type { Feature, Scenario } from "@cucumber/messages";
 import type { Diagnostic, LintDocument, ProjectRuleModule } from "../../types.js";
 import { forEachScenario } from "../../parser/document.js";
-import type { ValidatedOptions } from "../define.js";
 import { ruleDocs } from "../helpers.js";
-import { duplicateScenarioOptions } from "./helpers.js";
+import { duplicateScenarioOptions, type DuplicateScenarioOptions } from "./helpers.js";
 
 export const projectRules: Readonly<Record<string, ProjectRuleModule<unknown>>> = {
   "no-duplicate-feature-names": {
@@ -45,12 +44,12 @@ export const projectRules: Readonly<Record<string, ProjectRuleModule<unknown>>> 
       examples: ["Rule: Coupon\n  Scenario: apply\n  Scenario: apply"],
       documentation: ruleDocs("no-duplicate-scenario-names")
     },
-    validateOptions: duplicateScenarioOptions,
+    ...duplicateScenarioOptions,
     run({ documents, options, report }) {
       if (options.scope === "anywhere") reportDuplicatesAnywhere(documents, report);
       else reportDuplicatesPerScope(documents, report);
     }
-  } satisfies ProjectRuleModule<ValidatedOptions<typeof duplicateScenarioOptions>>,
+  } satisfies ProjectRuleModule<DuplicateScenarioOptions>,
 };
 
 type Report = (diagnostic: Diagnostic) => void;

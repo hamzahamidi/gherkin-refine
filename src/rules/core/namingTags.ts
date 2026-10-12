@@ -14,7 +14,7 @@ export const namingTagsRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Scenario: A name longer than the configured maximum"],
       documentation: ruleDocs("name-length")
     },
-    validateOptions: nameLengthOptions,
+    ...nameLengthOptions,
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
@@ -42,7 +42,7 @@ export const namingTagsRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["@BadTag"],
       documentation: ruleDocs("tag-pattern")
     },
-    validateOptions: tagPatternOptions,
+    ...tagPatternOptions,
     run({ document, options, report }) {
       const pattern = new RegExp(options.pattern);
       const feature = document.feature;
@@ -65,7 +65,7 @@ export const namingTagsRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["@unlisted"],
       documentation: ruleDocs("allowed-tags")
     },
-    validateOptions: tagListOptions,
+    ...tagListOptions,
     run({ document, options, report }) {
       if (!document.feature) return;
       const allowed = tagMatcher(options);
@@ -85,7 +85,7 @@ export const namingTagsRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["@wip"],
       documentation: ruleDocs("no-restricted-tags")
     },
-    validateOptions: tagListOptions,
+    ...tagListOptions,
     run({ document, options, report }) {
       if (!document.feature) return;
       const restricted = tagMatcher(options);
