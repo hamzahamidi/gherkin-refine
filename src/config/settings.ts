@@ -66,3 +66,7 @@ export function severityOf(input: unknown): Severity {
   if (input === "error" || input === 2) return "error";
   throw new ConfigError(`Invalid rule severity ${JSON.stringify(input)}. Use off, warn, error, 0, 1, or 2.`);
 }
+
+export function configuredRuleIds(config: LintConfig): ReadonlySet<string> {
+  return new Set([...Object.keys(config.rules ?? {}), ...(config.overrides ?? []).flatMap((override) => Object.keys(override.rules ?? {}))]);
+}

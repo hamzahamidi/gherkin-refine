@@ -2,9 +2,15 @@ import type { LoadedConfig } from "./index.js";
 import type { Severity } from "../types.js";
 import { ConfigError } from "./errors.js";
 import { effectiveConfig } from "./resolution.js";
-import { normalizeRuleSetting } from "./settings.js";
+import { configuredRuleIds, normalizeRuleSetting } from "./settings.js";
 
 export function validateConfiguration(loaded: LoadedConfig, filePaths: readonly string[], cwd: string): void {
+  const configured = configuredRuleIds(loaded.config);
+  for (const [legacyId, ruleId] of loaded.legacyRuleIds) {
+    if (configured.has(legacyId) && configured.has(ruleId)) {
+      throw new ConfigError(`Rules ${JSON.stringify(legacyId)} and ${JSON.stringify(ruleId)} are the same rule; configure only ${JSON.stringify(ruleId)}.`);
+    }
+  }
   const entries: { id: string; setting: Readonly<{ severity: Severity; options: unknown }>; filePath: string }[] = [];
   for (const filePath of filePaths) {
     const effective = effectiveConfig(loaded, filePath, cwd);

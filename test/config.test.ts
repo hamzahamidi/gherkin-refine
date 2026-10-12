@@ -139,7 +139,7 @@ describe("plugin resolution", () => {
     const cwd = await tempDirectory();
     const directory = join(cwd, "node_modules", "gherkin-refine-plugin-demo");
     await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, "package.json"), JSON.stringify({ name: "gherkin-refine-plugin-demo", type: "module", exports: { ".": { import: "./index.mjs" } } }));
+    await writeFile(join(directory, "package.json"), JSON.stringify({ name: "gherkin-refine-plugin-demo", type: "module", exports: { ".": { import: "./index.mjs" }, "./sub.mjs": "./sub.mjs" } }));
     await writeFile(join(directory, "sub.mjs"), 'export default { configs: { empty: {} } };');
     const loaded = await loadConfigObject(cwd, { plugins: ["gherkin-refine-plugin-demo/sub.mjs"], extends: ["demo/empty"] });
     expect(loaded.config.rules).toEqual({});

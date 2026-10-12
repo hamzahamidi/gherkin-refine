@@ -3,6 +3,7 @@ import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { effectiveConfig, loadConfig, type LoadedConfig } from "./config/index.js";
+import { configuredRuleIds } from "./config/settings.js";
 import { migrateLegacyFile } from "./compat/migrate.js";
 import { lintFiles, lintText } from "./core/engine.js";
 import { compareText } from "./core/ordering.js";
@@ -90,6 +91,10 @@ async function executeLint(paths: readonly string[], rawOptions: Record<string, 
   await rejectLegacyRuleDirectories(cwd, rawOptions.rulesdir as readonly string[]);
   const ignorePatterns = Array.isArray(rawOptions.ignore) ? rawOptions.ignore as readonly string[] : undefined;
   const loaded = await loadConfig(cwd, configPath, ignorePatterns ? { ignorePatterns } : {});
+  for (const id of configuredRuleIds(loaded.config)) {
+    const ruleId = loaded.legacyRuleIds.get(id);
+    if (ruleId) process.stderr.write(`warning: rule ID ${id} is deprecated; use ${ruleId}.\n`);
+  }
   if (runIntrospection(rawOptions, loaded, format, cwd)) return;
 
   const lintOptions = buildLintOptions(rawOptions, cwd, configPath, ignorePatterns);
@@ -177,6 +182,7 @@ function printRuleList(
 ): void {
   const effective = effectiveConfig(loaded, "__rules__.feature", cwd);
   const rules = [...loaded.fileRules.entries(), ...loaded.projectRules.entries()]
+    .filter(([id]) => !loaded.legacyRuleIds.has(id))
     .sort(([left], [right]) => compareText(left, right))
     .map(([id, rule]) => ({
       id,

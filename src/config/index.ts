@@ -13,6 +13,7 @@ export interface LoadedConfig {
   readonly fileRules: ReadonlyMap<string, RuleModule<unknown>>;
   readonly projectRules: ReadonlyMap<string, ProjectRuleModule<unknown>>;
   readonly pluginNames: ReadonlyMap<string, string>;
+  readonly legacyRuleIds: ReadonlyMap<string, string>;
   readonly legacyUnsupported?: readonly string[];
 }
 
@@ -84,28 +85,31 @@ export async function loadConfigObject(
   const fileRuleMap = new Map<string, RuleModule<unknown>>(Object.entries(fileRules));
   const projectRuleMap = new Map<string, ProjectRuleModule<unknown>>(Object.entries(projectRules));
   const pluginNames = new Map<string, string>();
-
-  for (const plugin of plugins) {
-    pluginNames.set(plugin.namespace, plugin.specifier);
-    for (const [id, rule] of Object.entries(plugin.module.rules ?? {})) {
-      fileRuleMap.set(qualifyRuleId(plugin.namespace, id), rule);
-    }
-    for (const [id, rule] of Object.entries(plugin.module.projectRules ?? {})) {
-      projectRuleMap.set(qualifyRuleId(plugin.namespace, id), rule);
-    }
-  }
-
+  const legacyRuleIds = new Map<string, string>();
   const presets = new Map<string, LintConfig>();
   presets.set("recommended", { rules: recommendedRules });
+
   for (const plugin of plugins) {
-    for (const [name, preset] of Object.entries(plugin.module.configs ?? {})) {
-      presets.set(`${plugin.namespace}/${name}`, qualifyConfig(plugin.namespace, preset));
+    for (const namespace of [plugin.namespace, ...(plugin.legacyNamespace ? [plugin.legacyNamespace] : [])]) {
+      const legacy = namespace !== plugin.namespace;
+      if (!legacy) pluginNames.set(namespace, plugin.specifier);
+      for (const [id, rule] of Object.entries(plugin.module.rules ?? {})) {
+        fileRuleMap.set(qualifyRuleId(namespace, id), rule);
+        if (legacy) legacyRuleIds.set(qualifyRuleId(namespace, id), qualifyRuleId(plugin.namespace, id));
+      }
+      for (const [id, rule] of Object.entries(plugin.module.projectRules ?? {})) {
+        projectRuleMap.set(qualifyRuleId(namespace, id), rule);
+        if (legacy) legacyRuleIds.set(qualifyRuleId(namespace, id), qualifyRuleId(plugin.namespace, id));
+      }
+      for (const [name, preset] of Object.entries(plugin.module.configs ?? {})) {
+        presets.set(`${namespace}/${name}`, qualifyConfig(namespace, preset));
+      }
     }
   }
   const merged = mergePresets(input, presets);
   const legacyIgnores = options.ignorePatterns ?? await readLegacyIgnoreFile(cwd);
   const config = legacyIgnores.length > 0 ? { ...merged, ignores: [...(merged.ignores ?? []), ...legacyIgnores] } : merged;
-  return { config, fileRules: fileRuleMap, projectRules: projectRuleMap, pluginNames };
+  return { config, fileRules: fileRuleMap, projectRules: projectRuleMap, pluginNames, legacyRuleIds };
 }
 
 // gherkin-lint reads this file from the working directory and treats each non-empty line as a glob.
