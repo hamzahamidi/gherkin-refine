@@ -94,7 +94,7 @@ Node strips TypeScript types only outside `node_modules`. A local `.ts` plugin l
 A project rule exports under `projectRules` and checks the whole file set in one call, for example duplicate names across files. It runs once per lint run, after file rules and autofix passes. `defineRule` covers file rules only; type a project rule as `ProjectRuleModule<Options>`, which takes `validateOptions` and `defaultOptions` the same way.
 
 - `documents` holds every linted document that parsed, including files where the rule is off.
-- `report` takes a diagnostic with `filePath`. The engine replaces `ruleId` and `severity`, drops reports for files where the rule is off, and applies each file's severity.
+- `report` takes a diagnostic with `filePath`. The engine replaces `ruleId` and `severity`, drops reports for files where the rule is off or that are not part of the run, applies each file's severity, and drops any `fix`: project rules cannot autofix.
 - `options` come from the first file, in path order, where the rule is enabled. Overrides can change a project rule's severity for each file, but not its options.
 
 Programmatic callers can pass a custom formatter function to `formatResult(result, formatter)`. Formatters receive a completed result and return a string. The CLI supports the built in formatters.

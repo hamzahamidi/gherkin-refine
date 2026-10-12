@@ -46,7 +46,8 @@ export async function runProjectRules(
       report(input: Diagnostic) {
         const fileSetting = settingsByFile.get(input.filePath)?.get(ruleId);
         if (!fileSetting || fileSetting.severity === "off") return;
-        diagnostics.push({ ...input, ruleId, severity: fileSetting.severity });
+        const { fix, ...withoutFix } = input;
+        diagnostics.push({ ...withoutFix, ruleId, severity: fileSetting.severity });
       }
     };
 

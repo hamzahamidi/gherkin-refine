@@ -88,6 +88,20 @@ describe("project plugin execution", () => {
     ]);
   });
 
+  it("drops fixes reported by project rules, which the engine never applies", async () => {
+    const { cwd, config } = await fixture(`export const projectRules = { check: {
+      meta: ${meta},
+      run({ documents, report }) {
+        for (const document of documents) report({ filePath: document.filePath, ruleId: "ignored", severity: "error", message: "Project fix", start: { line: 1, column: 1 }, fix: { range: [0, 7], text: "FEATURE" } });
+      }
+    } };`);
+    await writeFile(join(cwd, "a.feature"), "Feature: a\n");
+    const result = await lintFiles(["."], { cwd, fixDryRun: true, config: { ...config, rules: { "boundary/check": "error" } } });
+    expect(result.summary).toMatchObject({ errors: 1, fixable: 0 });
+    expect(result.results[0]?.diagnostics[0]).not.toHaveProperty("fix");
+    expect(result.results[0]?.fixes).toBeUndefined();
+  });
+
   it.each(["new Error('project failed')", "'project failed'"])("preserves the cause of a rejected project rule: %s", async (thrown) => {
     const { cwd, config } = await fixture(`export default { projectRules: { check: { meta: ${meta}, run() { throw ${thrown}; } } } };`);
     const promise = lintText("Feature: F\n", { cwd, config: { ...config, rules: { "boundary/check": "error" } } });
