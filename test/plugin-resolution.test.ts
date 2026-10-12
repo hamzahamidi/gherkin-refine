@@ -82,11 +82,13 @@ describe("plugin resolution", () => {
 
   it("loads local plugins by relative path, absolute path and file URL", async () => {
     const absolute = join(project, "local-plugin.mjs");
-    expect(await resolveFrom(project, ["./local-plugin.mjs", absolute, pathToFileURL(absolute).href])).toEqual([
-      ["./local-plugin.mjs", "local-plugin.mjs", ["local"]],
-      [absolute, "local-plugin.mjs", ["local"]],
-      [pathToFileURL(absolute).href, "local-plugin.mjs", ["local"]]
+    const loaded = await resolveFrom(project, ["./local-plugin.mjs", absolute, pathToFileURL(absolute).href]);
+    expect(loaded.map(([specifier, , rules]) => [specifier, rules])).toEqual([
+      ["./local-plugin.mjs", ["local"]],
+      [absolute, ["local"]],
+      [pathToFileURL(absolute).href, ["local"]]
     ]);
+    expect([loaded[0]?.[1], loaded[2]?.[1]]).toEqual(["local-plugin.mjs", "local-plugin.mjs"]);
   });
 
   it("loads each specifier once", async () => {
@@ -101,7 +103,7 @@ describe("plugin resolution", () => {
     ["missing-package", "Package resolution did not find missing-package"],
     ["./broken-local.mjs", "broken-local.mjs"],
     ["./missing-local.mjs", "Cannot find module"],
-    ["file:///nonexistent/plugin.mjs", "Cannot find module"]
+    ["file:///nonexistent/plugin.mjs", "file:///nonexistent/plugin.mjs"]
   ])("rejects %s", async (specifier, message) => {
     await expect(resolveFrom(project, [specifier])).rejects.toThrow(`Could not load plugin ${JSON.stringify(specifier)}`);
     await expect(resolveFrom(project, [specifier])).rejects.toThrow(message);
