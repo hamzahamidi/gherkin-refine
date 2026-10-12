@@ -1,5 +1,5 @@
 import type { Examples, Scenario, Tag } from "@cucumber/messages";
-import type { RuleModule } from "../../types.js";
+import type { LintDocument, RuleContext, RuleModule } from "../../types.js";
 import { containers, intersection, nodeType, tagsByLine } from "./helpers.js";
 import { featureTags, lineDiagnostic, rangeDiagnostic, ruleDocs } from "../helpers.js";
 
@@ -104,19 +104,23 @@ export const tagsRules: Readonly<Record<string, RuleModule<unknown>>> = {
       const feature = document.feature;
       if (!feature) return;
       for (const { node, scenarios } of containers(feature)) {
-        for (const scenario of scenarios) {
-          if (scenario.examples.length < 2) continue;
-          for (const tag of intersection(scenario.examples.map((examples) => examples.tags.map((item) => item.name)))) {
-            report(lineDiagnostic(document, scenario.location.line, "no-homogeneous-tags",
-              `Tag ${tag} is on every Examples block of this Scenario Outline; define it on the Scenario Outline instead.`));
-          }
-        }
-        if (scenarios.length < 2) continue;
-        const parent = node === feature ? "Feature" : "Rule";
-        for (const tag of intersection(scenarios.map((scenario) => scenario.tags.map((item) => item.name)))) {
-          report(lineDiagnostic(document, node.location.line, "no-homogeneous-tags", `Tag ${tag} is on every Scenario of this ${parent}; define it on the ${parent} instead.`));
-        }
+        for (const scenario of scenarios) reportTagsOnEveryExamples(document, scenario, report);
+        if (scenarios.length >= 2) reportTagsOnEveryScenario(document, node === feature ? "Feature" : "Rule", node.location.line, scenarios, report);
       }
     }
   },
 };
+
+function reportTagsOnEveryExamples(document: LintDocument, scenario: Scenario, report: RuleContext["report"]): void {
+  if (scenario.examples.length < 2) return;
+  for (const tag of intersection(scenario.examples.map((examples) => examples.tags.map((item) => item.name)))) {
+    report(lineDiagnostic(document, scenario.location.line, "no-homogeneous-tags",
+      `Tag ${tag} is on every Examples block of this Scenario Outline; define it on the Scenario Outline instead.`));
+  }
+}
+
+function reportTagsOnEveryScenario(document: LintDocument, parent: string, line: number, scenarios: readonly Scenario[], report: RuleContext["report"]): void {
+  for (const tag of intersection(scenarios.map((scenario) => scenario.tags.map((item) => item.name)))) {
+    report(lineDiagnostic(document, line, "no-homogeneous-tags", `Tag ${tag} is on every Scenario of this ${parent}; define it on the ${parent} instead.`));
+  }
+}

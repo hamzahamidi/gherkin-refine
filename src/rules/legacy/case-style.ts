@@ -24,13 +24,13 @@ function deburr(value: string): string {
     .replace(/[̀-ͯ︠-︯⃐-⃿]/g, "");
 }
 
-const BREAK = "\\xac\\xb1\\xd7\\xf7\\x00-\\x2f\\x3a-\\x40\\x5b-\\x60\\x7b-\\xbf\\u2000-\\u206f \\t\\x0b\\f\\xa0\\ufeff\\n\\r\\u2028\\u2029\\u1680\\u180e\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u202f\\u205f\\u3000";
+const BREAK = String.raw`\xac\xb1\xd7\xf7\x00-\x2f\x3a-\x40\x5b-\x60\x7b-\xbf\u2000-\u206f \t\x0b\f\xa0\ufeff\n\r\u2028\u2029\u1680\u180e\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000`;
 
-const UPPER = "A-Z\\xc0-\\xd6\\xd8-\\xde";
+const UPPER = String.raw`A-Z\xc0-\xd6\xd8-\xde`;
 
-const LOWER = "a-z\\xdf-\\xf6\\xf8-\\xff";
+const LOWER = String.raw`a-z\xdf-\xf6\xf8-\xff`;
 
-const MISC = `[^\\ud800-\\udfff${BREAK}\\d\\u2700-\\u27bf${LOWER}${UPPER}]`;
+const MISC = String.raw`[^\ud800-\udfff${BREAK}\d\u2700-\u27bf${LOWER}${UPPER}]`;
 
 const MISC_LOWER = `(?:[${LOWER}]|${MISC})`;
 
@@ -41,18 +41,18 @@ const UNICODE_WORD = new RegExp([
   `${MISC_UPPER}+(?=[${BREAK}]|[${UPPER}]${MISC_LOWER}|$)`,
   `[${UPPER}]?${MISC_LOWER}+`,
   `[${UPPER}]+`,
-  "\\d*(?:1ST|2ND|3RD|(?![123])\\dTH)(?=\\b|[a-z_])",
-  "\\d*(?:1st|2nd|3rd|(?![123])\\dth)(?=\\b|[A-Z_])",
-  "\\d+",
-  "(?:[\\u2700-\\u27bf]|(?:\\ud83c[\\udde6-\\uddff]){2}|[\\ud800-\\udbff][\\udc00-\\udfff])[\\ufe0e\\ufe0f]?(?:[\\u0300-\\u036f\\ufe20-\\ufe2f\\u20d0-\\u20ff]|\\ud83c[\\udffb-\\udfff])?(?:\\u200d(?:[^\\ud800-\\udfff]|(?:\\ud83c[\\udde6-\\uddff]){2}|[\\ud800-\\udbff][\\udc00-\\udfff])[\\ufe0e\\ufe0f]?(?:[\\u0300-\\u036f\\ufe20-\\ufe2f\\u20d0-\\u20ff]|\\ud83c[\\udffb-\\udfff])?)*"
+  String.raw`\d*(?:1ST|2ND|3RD|(?![123])\dTH)(?=\b|[a-z_])`,
+  String.raw`\d*(?:1st|2nd|3rd|(?![123])\dth)(?=\b|[A-Z_])`,
+  String.raw`\d+`,
+  String.raw`(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff]|\ud83c[\udffb-\udfff])?(?:\u200d(?:[^\ud800-\udfff]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff])[\ufe0e\ufe0f]?(?:[\u0300-\u036f\ufe20-\ufe2f\u20d0-\u20ff]|\ud83c[\udffb-\udfff])?)*`
 ].join("|"), "g");
 
 const ASCII_WORD = /[0-9A-Za-z\u0080-\uffff]+/g;
 
 function caseWords(value: string): string[] {
   const source = deburr(value).replace(/['’]/g, "");
-  if (/[a-z][A-Z]|[A-Z]{2}[a-z]|[0-9][a-zA-Z]|[a-zA-Z][0-9]|[^a-zA-Z0-9 ]/.test(source)) return source.match(UNICODE_WORD) ?? [];
-  return source.match(ASCII_WORD) ?? [];
+  if (/[a-z][A-Z]|[A-Z]{2}[a-z]|\d[a-zA-Z]|[a-zA-Z]\d|[^a-zA-Z\d ]/.test(source)) return Array.from(source.matchAll(UNICODE_WORD), (match) => match[0]);
+  return Array.from(source.matchAll(ASCII_WORD), (match) => match[0]);
 }
 
 function upperFirst(value: string): string {

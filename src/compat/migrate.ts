@@ -183,33 +183,43 @@ function isPositiveInteger(value: unknown): value is number {
 
 function stripJsonComments(source: string): string {
   let output = "";
-  let inString = false;
-  let escaped = false;
-  for (let index = 0; index < source.length; index += 1) {
-    const current = source[index] ?? "";
-    const next = source[index + 1] ?? "";
-    if (inString) {
-      output += current;
-      if (escaped) escaped = false;
-      else if (current === "\\") escaped = true;
-      else if (current === '"') inString = false;
-      continue;
-    }
-    if (current === '"') {
-      inString = true;
-      output += current;
-    } else if (current === "/" && next === "/") {
-      while (index < source.length && source[index] !== "\n") index += 1;
+  let index = 0;
+  while (index < source.length) {
+    if (source[index] === '"') {
+      const end = stringEnd(source, index);
+      output += source.slice(index, end);
+      index = end;
+    } else if (source.startsWith("//", index)) {
+      index = lineEnd(source, index);
       output += "\n";
-    } else if (current === "/" && next === "*") {
-      index += 2;
-      while (index < source.length && !(source[index] === "*" && source[index + 1] === "/")) index += 1;
-      index += 1;
+    } else if (source.startsWith("/*", index)) {
+      index = blockCommentEnd(source, index);
     } else {
-      output += current;
+      output += source[index];
+      index += 1;
     }
   }
   return output;
+}
+
+function stringEnd(source: string, start: number): number {
+  let index = start + 1;
+  while (index < source.length) {
+    if (source[index] === "\\") index += 2;
+    else if (source[index] === '"') return index + 1;
+    else index += 1;
+  }
+  return source.length;
+}
+
+function lineEnd(source: string, start: number): number {
+  const newline = source.indexOf("\n", start);
+  return newline < 0 ? source.length : newline + 1;
+}
+
+function blockCommentEnd(source: string, start: number): number {
+  const close = source.indexOf("*/", start + 2);
+  return close < 0 ? source.length : close + 2;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
