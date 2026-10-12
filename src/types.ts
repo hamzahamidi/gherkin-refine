@@ -60,6 +60,7 @@ export interface RuleContext<TOptions = unknown> {
 export interface RuleModule<TOptions = unknown> {
   readonly meta: RuleMeta;
   validateOptions?(options: unknown): options is TOptions;
+  optionsError?(options: unknown): string | undefined;
   run(context: RuleContext<TOptions>): void | Promise<void>;
 }
 
@@ -157,6 +158,7 @@ export interface ProjectRuleContext<TOptions = unknown> {
 export interface ProjectRuleModule<TOptions = unknown> {
   readonly meta: RuleMeta;
   validateOptions?(options: unknown): options is TOptions;
+  optionsError?(options: unknown): string | undefined;
   run(context: ProjectRuleContext<TOptions>): void | Promise<void>;
 }
 

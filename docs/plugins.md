@@ -79,7 +79,9 @@ export const maxScenarioTags = defineRule<MaxTagsOptions>({
 export default { rules: { "max-scenario-tags": maxScenarioTags } } satisfies PluginModule;
 ```
 
-A setting without options passes `defaultOptions`, or `{}` when the rule has none, so `validateOptions` must accept `defaultOptions`. Every rule setting in the configuration is validated, overrides included. Invalid options stop linting with exit code 2 and `Invalid options for rule "<id>" in <source>.`
+A setting without options passes `defaultOptions`, or `{}` when the rule has none, so `validateOptions` must accept `defaultOptions`. Every rule setting in the configuration is validated, overrides included, except a setting that only turns the rule `off`. Invalid options stop linting with exit code 2 and `Invalid options for rule "<id>" in <source>.`
+
+An optional `optionsError(options)` returns why options are invalid, or `undefined` when they are valid. The message then ends with that reason, such as `Invalid options for rule "max-tags/max-scenario-tags" in configuration: max must be a positive integer.`
 
 Node strips TypeScript types only outside `node_modules`. A local `.ts` plugin loads directly; publish compiled JavaScript.
 

@@ -91,7 +91,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Scenario: long flow\n  Given one\n  When two\n  Then three"],
       documentation: ruleDocs("scenario-size")
     },
-    validateOptions: scenarioSizeOptions,
+    ...scenarioSizeOptions,
     run({ document, options, report }) {
       forEachScenario(document, (scenario) => {
         if (scenario.steps.length <= options.maxSteps) return;
@@ -110,7 +110,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Rule: Coupon\n  Background:\n    Given many shared steps"],
       documentation: ruleDocs("background-size")
     },
-    validateOptions: scenarioSizeOptions,
+    ...scenarioSizeOptions,
     run({ document, options, report }) {
       const { maxSteps } = options;
       const feature = document.feature;
@@ -138,7 +138,7 @@ export const initialRules: Readonly<Record<string, RuleModule<unknown>>> = {
       examples: ["Feature: Large workflow with more than the configured number of scenarios"],
       documentation: ruleDocs("feature-size")
     },
-    validateOptions: featureSizeOptions,
+    ...featureSizeOptions,
     run({ document, options, report }) {
       const feature = document.feature;
       if (!feature) return;
