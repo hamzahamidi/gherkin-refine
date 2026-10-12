@@ -13,7 +13,7 @@ export interface LoadedConfig {
   readonly fileRules: ReadonlyMap<string, RuleModule<unknown>>;
   readonly projectRules: ReadonlyMap<string, ProjectRuleModule<unknown>>;
   readonly pluginNames: ReadonlyMap<string, string>;
-  readonly legacyRuleIds: ReadonlySet<string>;
+  readonly legacyRuleIds: ReadonlyMap<string, string>;
   readonly legacyUnsupported?: readonly string[];
 }
 
@@ -85,7 +85,7 @@ export async function loadConfigObject(
   const fileRuleMap = new Map<string, RuleModule<unknown>>(Object.entries(fileRules));
   const projectRuleMap = new Map<string, ProjectRuleModule<unknown>>(Object.entries(projectRules));
   const pluginNames = new Map<string, string>();
-  const legacyRuleIds = new Set<string>();
+  const legacyRuleIds = new Map<string, string>();
   const presets = new Map<string, LintConfig>();
   presets.set("recommended", { rules: recommendedRules });
 
@@ -95,11 +95,11 @@ export async function loadConfigObject(
       if (!legacy) pluginNames.set(namespace, plugin.specifier);
       for (const [id, rule] of Object.entries(plugin.module.rules ?? {})) {
         fileRuleMap.set(qualifyRuleId(namespace, id), rule);
-        if (legacy) legacyRuleIds.add(qualifyRuleId(namespace, id));
+        if (legacy) legacyRuleIds.set(qualifyRuleId(namespace, id), qualifyRuleId(plugin.namespace, id));
       }
       for (const [id, rule] of Object.entries(plugin.module.projectRules ?? {})) {
         projectRuleMap.set(qualifyRuleId(namespace, id), rule);
-        if (legacy) legacyRuleIds.add(qualifyRuleId(namespace, id));
+        if (legacy) legacyRuleIds.set(qualifyRuleId(namespace, id), qualifyRuleId(plugin.namespace, id));
       }
       for (const [name, preset] of Object.entries(plugin.module.configs ?? {})) {
         presets.set(`${namespace}/${name}`, qualifyConfig(namespace, preset));
