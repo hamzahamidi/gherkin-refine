@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 (2026-10-12)
+
+Invalid rule options now say what is wrong, such as `maxSteps must be a positive integer`. Rules, including plugin rules, can explain invalid options through an optional `optionsError(options)`. An override that only turns a rule off no longer validates options it does not have.
+
+Plugin resolution follows the package's `exports` for subpaths, including `*` patterns, so files a package does not export no longer load. A `package.json` that cannot be read or parsed stops linting instead of loading a same-named package from a parent directory. Node.js built-in modules are rejected as plugins. Export conditions are read in the order the package declares them, as Node.js does. A plugin loaded from a file path drops the extension from its namespace, as in `max-tags/rule`; the earlier `max-tags.ts/rule` ID keeps working with a deprecation warning, and configuring a rule under both IDs is an error. Two plugins that share a namespace are an error instead of one silently replacing the other's rules.
+
+Project rules can no longer report fixes, which the engine never applied, so `summary.fixable` counts only fixes that `--fix` can use.
+
 ## 1.3.5 (2026-10-12)
 
 Simplifies internals with no change in lint results, fixes, configuration handling or the public API. Built-in rules take their option types from their validators, and the functions SonarQube Cloud flagged as complex or unclear are split into named steps.

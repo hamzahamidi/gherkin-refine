@@ -32,4 +32,17 @@ describe("atomic write failures", () => {
     expect(await readFile(path, "utf8")).toBe(source);
     expect(await readdir(cwd)).toEqual(["one.feature"]);
   });
+
+  it("keeps earlier files fixed when a later write fails", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "gherkin-refine-write-"));
+    directories.push(cwd);
+    await writeFile(join(cwd, "a.feature"), "Feature: A  \n");
+    await writeFile(join(cwd, "b.feature"), "Feature: B  \n");
+    const actual = await vi.importActual<typeof FileSystem>("node:fs/promises");
+    vi.mocked(rename).mockImplementationOnce(actual.rename).mockRejectedValueOnce(new Error("rename failed"));
+    await expect(lintFiles(["."], { cwd, fix: true, config: { extends: [], rules: { "no-trailing-whitespace": "error" } } }))
+      .rejects.toThrow(`Could not write autofixed file ${join(cwd, "b.feature")}: rename failed`);
+    expect(await readFile(join(cwd, "a.feature"), "utf8")).toBe("Feature: A\n");
+    expect(await readFile(join(cwd, "b.feature"), "utf8")).toBe("Feature: B  \n");
+  });
 });
