@@ -91,13 +91,13 @@ async function executeLint(paths: readonly string[], rawOptions: Record<string, 
   await rejectLegacyRuleDirectories(cwd, rawOptions.rulesdir as readonly string[]);
   const ignorePatterns = Array.isArray(rawOptions.ignore) ? rawOptions.ignore as readonly string[] : undefined;
   const loaded = await loadConfig(cwd, configPath, ignorePatterns ? { ignorePatterns } : {});
-  if (runIntrospection(rawOptions, loaded, format, cwd)) return;
-
-  const lintOptions = buildLintOptions(rawOptions, cwd, configPath, ignorePatterns);
   for (const id of configuredRuleIds(loaded.config)) {
     const ruleId = loaded.legacyRuleIds.get(id);
     if (ruleId) process.stderr.write(`warning: rule ID ${id} is deprecated; use ${ruleId}.\n`);
   }
+  if (runIntrospection(rawOptions, loaded, format, cwd)) return;
+
+  const lintOptions = buildLintOptions(rawOptions, cwd, configPath, ignorePatterns);
   if (loaded.legacyUnsupported) {
     process.stderr.write(`warning: .gherkin-lintrc rules not fully checked: ${loaded.legacyUnsupported.join(", ")}. Run "gherkin-refine migrate --dry-run" for details.\n`);
   }

@@ -189,7 +189,7 @@ describe("fallback resolution compared with Node", () => {
 
   it.each([
     "esm-only", "exports-string-import", "exports-subpaths/rules", "wildcard/rules/a", "wildcard/rules/private/b",
-    "wildcard/rules/", "escape-subpath/ok.js", "@scope/deep", "ordered/plugin", "precedence/rules/check.js"
+    "wildcard/rules/", "escape-subpath/ok.js", "@scope/deep", "ordered/plugin", "precedence/rules/check.js", "exports-null"
   ])("loads %s the way Node's ESM resolver does", async (specifier) => {
     const expected = nodeResolve(specifier);
     const packageName = specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0] ?? specifier;
