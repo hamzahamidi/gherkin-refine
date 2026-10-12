@@ -35,13 +35,15 @@ export function applyFixes(source: string, fixes: readonly RuleFix[]): string {
 
 function overlappingIndexes(fixes: readonly RuleFix[]): Set<number> {
   const overlapping = new Set<number>();
-  fixes.forEach((first, left) => {
-    fixes.forEach((second, right) => {
-      if (right <= left || !fixesOverlap(first, second)) return;
+  for (let left = 0; left < fixes.length; left += 1) {
+    for (let right = left + 1; right < fixes.length; right += 1) {
+      const first = fixes[left];
+      const second = fixes[right];
+      if (!first || !second || !fixesOverlap(first, second)) continue;
       overlapping.add(left);
       overlapping.add(right);
-    });
-  });
+    }
+  }
   return overlapping;
 }
 
