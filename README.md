@@ -2,6 +2,11 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkin-refine/ci.yml?branch=main&label=CI)](https://github.com/hamzahamidi/gherkin-refine/actions/workflows/ci.yml)
 [![Code coverage](https://codecov.io/github/hamzahamidi/gherkin-refine/graph/badge.svg)](https://codecov.io/github/hamzahamidi/gherkin-refine)
+[![SonarQube Cloud Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=hamzahamidi_gherkin-refine)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
+[![SonarQube Cloud Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
+[![SonarQube Cloud Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
+[![SonarQube Cloud Security Rating](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hamzahamidi/gherkin-refine/badge)](https://scorecard.dev/viewer/?uri=github.com/hamzahamidi/gherkin-refine)
 [![npm version](https://img.shields.io/npm/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![Node.js](https://img.shields.io/node/v/gherkin-refine.svg)](https://www.npmjs.com/package/gherkin-refine)
 [![License](https://img.shields.io/github/license/hamzahamidi/gherkin-refine.svg)](LICENSE)
