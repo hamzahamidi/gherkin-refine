@@ -158,7 +158,7 @@ Gherkin Refine is [MIT licensed](LICENSE) and independently maintained; it is no
 GitHub releases include a Sigstore bundle for the npm package. Download the `.tgz` and `.sigstore.json` assets, then verify the package with Cosign:
 
 ```sh
-VERSION=1.4.1
+VERSION=1.4.2
 cosign verify-blob \
   --bundle "gherkin-refine-$VERSION.tgz.sigstore.json" \
   --certificate-identity "https://github.com/hamzahamidi/gherkin-refine/.github/workflows/release.yml@refs/tags/v$VERSION" \

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2 (2026-10-16)
+
+Updates the npm README with quality badges and instructions for verifying signed releases. The release workflow signs the package and attaches its Sigstore bundle. Includes CI and development dependency maintenance. CLI and library behavior are unchanged.
+
 ## 1.4.1 (2026-10-12)
 
 Adds a support policy that defines the public interface covered by Semantic Versioning, the supported Node.js versions, what happens if maintenance stops and how to return to gherkin-lint. The README links to it. Lint results, configuration handling and the public API are unchanged.
