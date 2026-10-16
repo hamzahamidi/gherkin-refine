@@ -91,7 +91,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "eslint": "^10.12.0",
-    "gherkin-lint": "4.2.4",
+    "fast-check": "^4.10.2",
     "globals": "^17.13.0",
     "mermaid": "11.17.2",
     "typescript": "^6.0.0",
@@ -99,5 +99,13 @@
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
     "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "mermaid": {
+      "katex": "0.18.2"
+    },
+    "vitepress": {
+      "vite": "6.4.3"
+    }
   }
 }

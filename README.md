@@ -155,4 +155,15 @@ npm run validate
 
 Gherkin Refine is [MIT licensed](LICENSE) and independently maintained; it is not affiliated with Cucumber or `gherkin-lint`. It has no telemetry, and core rules make no network requests. Report vulnerabilities privately via the [security policy](SECURITY.md). The [support policy](SUPPORT.md) covers versions, Node.js support and how to leave the project.
 
+GitHub releases include a Sigstore bundle for the npm package. Download the `.tgz` and `.sigstore.json` assets, then verify the package with Cosign:
+
+```sh
+VERSION=1.4.1
+cosign verify-blob \
+  --bundle "gherkin-refine-$VERSION.tgz.sigstore.json" \
+  --certificate-identity "https://github.com/hamzahamidi/gherkin-refine/.github/workflows/release.yml@refs/tags/v$VERSION" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  "gherkin-refine-$VERSION.tgz"
+```
+
 Background reading: [original tutorial](https://hamidihamza.com/notes/add-gherkin-linting-nodejs/) | [DEV.to](https://dev.to/hamzahamidi/add-gherkin-linting-to-a-nodejs-project-3m8b) | [Medium](https://medium.com/@hamidihamza/add-gherkin-linting-to-a-node-js-project-0cc2bea2e2c0).

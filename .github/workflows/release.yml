@@ -19,10 +19,10 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release_tag || github.ref }}
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.18.0
           cache: npm
@@ -44,17 +44,16 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release_tag || github.ref }}
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22.18.0
+          node-version: 24.22.0
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - name: Use npm with trusted publishing support
+      - name: Check trusted publishing toolchain
         run: |
-          npm install --global npm@11.20.0
           node --version
           npm --version
       - run: npm ci
@@ -63,6 +62,13 @@ jobs:
         run: |
           npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/pack.json"
           node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); const pack = Array.isArray(data) ? data[0] : data?.filename ? data : Object.values(data)[0]; if (!pack?.filename || !pack?.version) process.exit(1); fs.appendFileSync(process.env.GITHUB_OUTPUT, `filename=${pack.filename}\nversion=${pack.version}\n`);' "$RUNNER_TEMP/pack.json"
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.0.6
+      - name: Sign release artifact
+        env:
+          PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
+        run: cosign sign-blob --yes --bundle "$RUNNER_TEMP/$PACKAGE_FILENAME.sigstore.json" "$RUNNER_TEMP/$PACKAGE_FILENAME"
       - name: Publish package
         env:
           PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
@@ -112,4 +118,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
-        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file CHANGELOG.md
+          PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
+        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file CHANGELOG.md "$RUNNER_TEMP/$PACKAGE_FILENAME" "$RUNNER_TEMP/$PACKAGE_FILENAME.sigstore.json"
