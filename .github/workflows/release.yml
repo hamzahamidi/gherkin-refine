@@ -34,7 +34,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
-        run: test "$INPUT_RELEASE_TAG" = "$GITHUB_REF_NAME"
+        run: test "$GITHUB_REF" = "refs/tags/$INPUT_RELEASE_TAG"
       - run: npm ci
       - run: npm run validate
       - run: npm pack --dry-run
@@ -46,7 +46,6 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     permissions:
-      artifact-metadata: write
       attestations: write
       contents: write
       id-token: write
@@ -83,7 +82,7 @@ jobs:
           gh attestation download "$PACKAGE_FILENAME" --repo "$GH_REPOSITORY" --predicate-type https://slsa.dev/provenance/v1
           bundle_path="sha256:$(sha256sum "$PACKAGE_FILENAME" | cut -d ' ' -f 1).jsonl"
           mv "$bundle_path" "$PACKAGE_FILENAME.intoto.jsonl"
-          gh attestation verify "$PACKAGE_FILENAME" --repo "$GH_REPOSITORY" --bundle "$PACKAGE_FILENAME.intoto.jsonl" --signer-workflow "$GH_REPOSITORY/.github/workflows/release.yml"
+          gh attestation verify "$PACKAGE_FILENAME" --repo "$GH_REPOSITORY" --bundle "$PACKAGE_FILENAME.intoto.jsonl" --signer-workflow "$GH_REPOSITORY/.github/workflows/release.yml" --source-ref "refs/tags/$RELEASE_TAG"
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: v3.0.6
@@ -141,4 +140,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
           PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
-        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file CHANGELOG.md "$RUNNER_TEMP/$PACKAGE_FILENAME" "$RUNNER_TEMP/$PACKAGE_FILENAME.sigstore.json" "$RUNNER_TEMP/$PACKAGE_FILENAME.intoto.jsonl"
+        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file CHANGELOG.md --verify-tag "$RUNNER_TEMP/$PACKAGE_FILENAME" "$RUNNER_TEMP/$PACKAGE_FILENAME.sigstore.json" "$RUNNER_TEMP/$PACKAGE_FILENAME.intoto.jsonl"
