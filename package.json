@@ -99,5 +99,22 @@
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
     "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "gherkin-lint": {
+      "lodash": "4.18.1"
+    },
+    "gherkin": {
+      "cucumber-messages": {
+        "protobufjs": "7.6.6",
+        "uuid": "11.1.1"
+      }
+    },
+    "mermaid": {
+      "katex": "0.18.2"
+    },
+    "vitepress": {
+      "vite": "6.4.3"
+    }
   }
 }
