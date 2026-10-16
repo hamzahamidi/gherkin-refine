@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.3 (2026-10-16)
+
+Updates Commander to 15.0.0. Release artifacts include verifiable SLSA provenance alongside the Sigstore signature bundle. CLI and library compatibility remain unchanged.
+
 ## 1.4.2 (2026-10-16)
 
 Updates the npm README with quality badges and instructions for verifying signed releases. The release workflow signs the package and attaches its Sigstore bundle. Includes CI and development dependency maintenance. CLI and library behavior are unchanged.
