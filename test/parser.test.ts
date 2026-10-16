@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import fc from "fast-check";
 import {
   forEachExamples,
   forEachRule,
@@ -38,6 +39,25 @@ describe("Gherkin document parsing", () => {
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]?.message).toContain("expected:");
     expect(result.errors[0]?.location).toEqual({ line: 1, column: 1 });
+  });
+
+  it("handles arbitrary source text without throwing", () => {
+    fc.assert(fc.property(fc.string({ maxLength: 256 }), (source) => {
+      const result = parseGherkin(source, "fuzz.feature");
+
+      if (result.document) {
+        expect(result.document.source).toBe(source);
+        expect(result.errors).toEqual([]);
+      } else {
+        expect(result.errors.length).toBeGreaterThan(0);
+        for (const error of result.errors) {
+          expect(Number.isInteger(error.location.line)).toBe(true);
+          expect(Number.isInteger(error.location.column)).toBe(true);
+          expect(error.location.line).toBeGreaterThan(0);
+          expect(error.location.column).toBeGreaterThan(0);
+        }
+      }
+    }), { numRuns: 500 });
   });
 
   it("maps positions and line ranges across CRLF and CR newlines", () => {
