@@ -30,11 +30,8 @@
     "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
-    "pretest": "node scripts/patch-legacy-cucumber-messages.mjs",
     "test": "vitest run",
-    "pretest:watch": "node scripts/patch-legacy-cucumber-messages.mjs",
     "test:watch": "vitest",
-    "precoverage": "node scripts/patch-legacy-cucumber-messages.mjs",
     "coverage": "npm run build && vitest run --coverage",
     "smoke": "node scripts/smoke-package.mjs",
     "bench": "node --expose-gc scripts/benchmark.mjs",
@@ -94,7 +91,6 @@
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "eslint": "^10.12.0",
-    "gherkin-lint": "4.2.4",
     "globals": "^17.13.0",
     "mermaid": "11.17.2",
     "typescript": "^6.0.0",
@@ -104,15 +100,6 @@
     "vitest": "^4.1.0"
   },
   "overrides": {
-    "gherkin-lint": {
-      "lodash": "4.18.1"
-    },
-    "gherkin": {
-      "cucumber-messages": {
-        "protobufjs": "7.6.6",
-        "uuid": "11.1.1"
-      }
-    },
     "mermaid": {
       "katex": "0.18.2"
     },
