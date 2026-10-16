@@ -23,7 +23,7 @@ const patches = [
 for (const patch of patches) {
   const source = await readFile(patch.path, "utf8");
   if (patch.before && source.includes(patch.after)) continue;
-  if (!patch.before && patch.replacements.every(([before, after]) => source.includes(after))) continue;
+  if (!patch.before && patch.replacements.every(([, after]) => source.includes(after))) continue;
 
   let updated = source;
   if (patch.before) {
