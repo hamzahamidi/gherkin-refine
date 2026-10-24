@@ -1,25 +1,51 @@
 import type { LoadedConfig } from "./index.js";
-import type { Severity } from "../types.js";
+import type { RuleSetting, Severity } from "../types.js";
 import { ConfigError } from "./errors.js";
 import { effectiveConfig } from "./resolution.js";
 import { configuredRuleIds, normalizeRuleSetting } from "./settings.js";
 
 export function validateConfiguration(loaded: LoadedConfig, filePaths: readonly string[], cwd: string): void {
   const configured = configuredRuleIds(loaded.config);
-  for (const [legacyId, ruleId] of loaded.legacyRuleIds) {
+  assertNoDuplicateLegacyRules(loaded.legacyRuleIds, configured);
+  const entries = effectiveRuleEntries(loaded, filePaths, cwd);
+  appendConfiguredRules(entries, loaded.config.rules, "configuration");
+  for (const override of loaded.config.overrides ?? []) {
+    appendConfiguredRules(entries, override.rules, "configuration override");
+  }
+  validateRuleEntries(loaded, entries);
+}
+
+interface ConfiguredRuleEntry {
+  readonly id: string;
+  readonly setting: Readonly<{ severity: Severity; options: unknown }>;
+  readonly filePath: string;
+}
+
+function assertNoDuplicateLegacyRules(legacyRuleIds: ReadonlyMap<string, string>, configured: ReadonlySet<string>): void {
+  for (const [legacyId, ruleId] of legacyRuleIds) {
     if (configured.has(legacyId) && configured.has(ruleId)) {
       throw new ConfigError(`Rules ${JSON.stringify(legacyId)} and ${JSON.stringify(ruleId)} are the same rule; configure only ${JSON.stringify(ruleId)}.`);
     }
   }
-  const entries: { id: string; setting: Readonly<{ severity: Severity; options: unknown }>; filePath: string }[] = [];
+}
+
+function effectiveRuleEntries(loaded: LoadedConfig, filePaths: readonly string[], cwd: string): ConfiguredRuleEntry[] {
+  const entries: ConfiguredRuleEntry[] = [];
   for (const filePath of filePaths) {
-    const effective = effectiveConfig(loaded, filePath, cwd);
-    for (const [id, setting] of effective.rules) entries.push({ id, setting, filePath });
+    for (const [id, setting] of effectiveConfig(loaded, filePath, cwd).rules) entries.push({ id, setting, filePath });
   }
-  for (const [id, setting] of Object.entries(loaded.config.rules ?? {})) entries.push({ id, setting: normalizeRuleSetting(setting), filePath: "configuration" });
-  for (const override of loaded.config.overrides ?? []) {
-    for (const [id, setting] of Object.entries(override.rules ?? {})) entries.push({ id, setting: normalizeRuleSetting(setting), filePath: "configuration override" });
-  }
+  return entries;
+}
+
+function appendConfiguredRules(
+  entries: ConfiguredRuleEntry[],
+  rules: Readonly<Record<string, RuleSetting>> | undefined,
+  filePath: string
+): void {
+  for (const [id, setting] of Object.entries(rules ?? {})) entries.push({ id, setting: normalizeRuleSetting(setting), filePath });
+}
+
+function validateRuleEntries(loaded: LoadedConfig, entries: readonly ConfiguredRuleEntry[]): void {
   for (const { id, setting, filePath } of entries) {
     const module = loaded.fileRules.get(id) ?? loaded.projectRules.get(id);
     if (!module) throw new ConfigError(`Unknown rule ${JSON.stringify(id)} in configuration.`);
@@ -27,7 +53,8 @@ export function validateConfiguration(loaded: LoadedConfig, filePaths: readonly 
     const options = setting.options ?? module.meta.defaultOptions ?? {};
     if (module.validateOptions && !module.validateOptions(options)) {
       const reason = module.optionsError?.(options);
-      throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}${reason ? `: ${reason}` : ""}.`);
+      const detail = reason ? `: ${reason}` : "";
+      throw new ConfigError(`Invalid options for rule ${JSON.stringify(id)} in ${filePath}${detail}.`);
     }
   }
 }

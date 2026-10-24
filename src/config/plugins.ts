@@ -140,8 +140,11 @@ function isMissing(error: unknown): boolean {
 
 function packageEntryPath(manifest: PackageManifest, specifier: string, subpath: string): string {
   const fallback = manifest.module ?? manifest.main ?? "index.js";
-  if (manifest.exports === undefined || manifest.exports === null) return subpath ? `./${subpath}` : fallback;
-  const target = subpath.endsWith("/") ? undefined : conditionTarget(exportEntry(manifest.exports, subpath ? `./${subpath}` : "."));
+  if (manifest.exports === undefined || manifest.exports === null) {
+    return subpath ? `./${subpath}` : fallback;
+  }
+  const request = subpath ? `./${subpath}` : ".";
+  const target = subpath.endsWith("/") ? undefined : conditionTarget(exportEntry(manifest.exports, request));
   if (typeof target === "string") return target;
   if (subpath) throw new ConfigError(`Plugin ${specifier} is not exported by its package.`);
   return fallback;
