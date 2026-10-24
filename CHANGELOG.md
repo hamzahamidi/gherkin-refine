@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.6 (2026-10-24)
+
+Reduces configuration analysis complexity by extracting plugin registry setup and rule validation into focused helpers. Configuration behavior is unchanged.
+
 ## 1.4.5 (2026-10-24)
 
 Updates the npm README to report coverage through SonarQube Cloud instead of Codecov. CLI and library behavior are unchanged.
