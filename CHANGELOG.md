@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.5 (2026-10-24)
+
+Updates the npm README to report coverage through SonarQube Cloud instead of Codecov. CLI and library behavior are unchanged.
+
 ## 1.4.4 (2026-10-24)
 
 Updates Vitest and coverage tooling to 5.0.4. Includes CI and development dependency maintenance. CLI and library behavior are unchanged.

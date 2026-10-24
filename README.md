@@ -1,7 +1,7 @@
 # Gherkin Refine
 
 [![CI](https://img.shields.io/github/actions/workflow/status/hamzahamidi/gherkin-refine/ci.yml?branch=main&label=CI)](https://github.com/hamzahamidi/gherkin-refine/actions/workflows/ci.yml)
-[![SonarQube Cloud Coverage](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=coverage)](https://sonarcloud.io/component_measures?id=hamzahamidi_gherkin-refine&metric=coverage)
+[![Coverage measured by SonarQube Cloud](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=coverage)](https://sonarcloud.io/component_measures?id=hamzahamidi_gherkin-refine&metric=coverage)
 [![SonarQube Cloud Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
 [![SonarQube Cloud Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
 [![SonarQube Cloud Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=hamzahamidi_gherkin-refine&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=hamzahamidi_gherkin-refine)
@@ -158,7 +158,7 @@ Gherkin Refine is [MIT licensed](LICENSE) and independently maintained; it is no
 GitHub releases include a Sigstore bundle for the npm package. Download the `.tgz` and `.sigstore.json` assets, then verify the package with Cosign:
 
 ```sh
-VERSION=1.4.2
+VERSION=1.4.5
 cosign verify-blob \
   --bundle "gherkin-refine-$VERSION.tgz.sigstore.json" \
   --certificate-identity "https://github.com/hamzahamidi/gherkin-refine/.github/workflows/release.yml@refs/tags/v$VERSION" \
