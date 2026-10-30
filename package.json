@@ -82,7 +82,7 @@
     "@cucumber/gherkin": "^42.0.1",
     "@cucumber/messages": "^34.2.1",
     "commander": "^15.0.0",
-    "glob": "^13.0.6",
+    "glob": "^14.0.2",
     "minimatch": "^10.1.1"
   },
   "devDependencies": {
