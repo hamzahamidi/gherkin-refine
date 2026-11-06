@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.7 (2026-11-07)
+
+Updates file discovery to Glob 14 and its nonrecursive pattern matcher. Includes development dependency and CI action updates. The minimum Node.js version remains 22.18.0.
+
 ## 1.4.6 (2026-10-24)
 
 Reduces configuration analysis complexity by extracting plugin registry setup and rule validation into focused helpers. Configuration behavior is unchanged.
