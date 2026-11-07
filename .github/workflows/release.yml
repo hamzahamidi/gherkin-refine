@@ -35,8 +35,6 @@ jobs:
         env:
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: test "$GITHUB_REF" = "refs/tags/$INPUT_RELEASE_TAG"
-      - name: Check release notes
-        run: node scripts/release-notes.mjs "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
       - run: npm ci
       - run: npm run validate
       - run: npm pack --dry-run
@@ -64,8 +62,6 @@ jobs:
         run: |
           node --version
           npm --version
-      - name: Generate release notes
-        run: node scripts/release-notes.mjs "$RELEASE_TAG" > "$RUNNER_TEMP/release-notes.md"
       - run: npm ci
       - id: package
         name: Pack release artifact
@@ -144,4 +140,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPOSITORY: ${{ github.repository }}
           PACKAGE_FILENAME: ${{ steps.package.outputs.filename }}
-        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md" --verify-tag "$RUNNER_TEMP/$PACKAGE_FILENAME" "$RUNNER_TEMP/$PACKAGE_FILENAME.sigstore.json" "$RUNNER_TEMP/$PACKAGE_FILENAME.intoto.jsonl"
+        run: gh release create "$RELEASE_TAG" --repo "$GH_REPOSITORY" --title "$RELEASE_TAG" --generate-notes --verify-tag "$RUNNER_TEMP/$PACKAGE_FILENAME" "$RUNNER_TEMP/$PACKAGE_FILENAME.sigstore.json" "$RUNNER_TEMP/$PACKAGE_FILENAME.intoto.jsonl"
