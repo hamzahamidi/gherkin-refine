@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.8 (2026-11-23)
+
+Updates pattern matching for configuration overrides to Minimatch 11, which replaces regular expressions with a nonrecursive matcher. Includes development dependency and CI action updates. The minimum Node.js version remains 22.18.0.
+
 ## 1.4.7 (2026-11-07)
 
 Updates file discovery to Glob 14 and its nonrecursive pattern matcher. Includes development dependency and CI action updates. The minimum Node.js version remains 22.18.0.
