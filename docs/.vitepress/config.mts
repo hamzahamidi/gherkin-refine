@@ -1,6 +1,5 @@
 import { readdirSync } from "node:fs";
 import { defineConfig } from "vitepress";
-import { withMermaid } from "vitepress-plugin-mermaid";
 
 const ANALYTICS_ID = "G-TH8GG8HPH6";
 
@@ -9,12 +8,22 @@ const ruleIds = readdirSync(new URL("../rules", import.meta.url))
   .map((name) => name.slice(0, -".md".length))
   .sort();
 
-export default withMermaid(defineConfig({
+export default defineConfig({
   title: "Gherkin Refine",
   description: "A fast, deterministic Gherkin linter and safe fixer for Node.js, CI, and AI coding agents.",
   base: "/gherkin-refine/",
   cleanUrls: true,
   lastUpdated: true,
+  markdown: {
+    config(md) {
+      const fence = md.renderer.rules.fence!;
+      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+        const token = tokens[idx];
+        if (token.info.trim() !== "mermaid") return fence(tokens, idx, options, env, self);
+        return `<Mermaid id="mermaid-${idx}" graph="${encodeURIComponent(token.content)}" />`;
+      };
+    }
+  },
   sitemap: { hostname: "https://hamidihamza.com/gherkin-refine/" },
   head: [
     ["script", { async: "", src: `https://www.googletagmanager.com/gtag/js?id=${ANALYTICS_ID}` }],
@@ -63,4 +72,4 @@ export default withMermaid(defineConfig({
     },
     footer: { message: "Released under the MIT License." }
   }
-}));
+});
