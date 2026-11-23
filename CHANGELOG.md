@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.9 (2026-11-23)
+
+Updates Gherkin parsing to @cucumber/gherkin 43, which accepts @cucumber/messages up to 35. Includes development dependency and CI action updates. The minimum Node.js version remains 22.18.0.
+
 ## 1.4.8 (2026-11-23)
 
 Updates pattern matching for configuration overrides to Minimatch 11, which replaces regular expressions with a nonrecursive matcher. Includes development dependency and CI action updates. The minimum Node.js version remains 22.18.0.
